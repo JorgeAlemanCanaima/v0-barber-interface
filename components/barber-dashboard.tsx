@@ -1,20 +1,15 @@
-
-
 "use client"
 
-import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
 import {
   DollarSign,
   Users,
   Scissors,
   Calendar,
-  Clock,
   Star,
   Plus,
   Search,
@@ -27,9 +22,20 @@ import {
   Bell,
   BarChart3,
   Sparkles,
-  Loader2,
-  RefreshCcw,
+  Package,
   AlertTriangle,
+  History,
+  Gift,
+  CreditCard,
+  MessageSquare,
+  Camera,
+  Download,
+  Upload,
+  Trash2,
+  Eye,
+  UserCheck,
+  Zap,
+  Heart,
 } from "lucide-react"
 import {
   PieChart,
@@ -43,24 +49,8 @@ import {
   AreaChart,
   Area,
 } from "recharts"
-import { useBarbers, useServices, useAppointments } from "@/lib/hooks/useSupabase"
 
-// ---- Helpers ---------------------------------------------------------------
-const fmtMoney = (n: number | undefined | null) =>
-  new Intl.NumberFormat("es-NI", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(
-    Number.isFinite(n as number) ? (n as number) : 0
-  )
-
-const fmtTime = (d: string | Date | undefined) =>
-  d ? new Date(d).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "--:--"
-
-const todayISO = () => {
-  const d = new Date()
-  d.setHours(0, 0, 0, 0)
-  return d.toISOString()
-}
-
-// Datos de ejemplo para el gráfico (se muestran aunque no haya ventas aún)
+// Datos de ejemplo
 const earningsData = [
   { name: "Ene", earnings: 4200, clients: 168 },
   { name: "Feb", earnings: 3800, clients: 152 },
@@ -78,128 +68,192 @@ const haircutTypes = [
   { name: "Otros", value: 8, color: "hsl(var(--chart-5))", count: 20 },
 ]
 
-// ---- UI piezas reutilizables ----------------------------------------------
-function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return (
-    <Card className={`glass-card border-0 hover-lift ${className}`}>
-      {children}
-    </Card>
-  )
-}
+const recentClients = [
+  { id: 1, name: "Carlos Mendoza", service: "Fade Clásico", time: "10:30", price: 25, rating: 5, visits: 12 },
+  { id: 2, name: "Miguel Torres", service: "Corte + Barba", time: "11:15", price: 35, rating: 5, visits: 8 },
+  { id: 3, name: "Juan Pérez", service: "Buzz Cut", time: "12:00", price: 20, rating: 4, visits: 15 },
+  { id: 4, name: "Roberto Silva", service: "Pompadour", time: "14:30", price: 30, rating: 5, visits: 6 },
+  { id: 5, name: "Diego Ramírez", service: "Fade + Barba", time: "15:45", price: 40, rating: 5, visits: 9 },
+]
 
-function StatCard({
-  title,
-  icon: Icon,
-  value,
-  delta,
-  deltaLabel,
-}: {
-  title: string
-  icon: any
-  value: string
-  delta?: string
-  deltaLabel?: string
-}) {
-  return (
-    <GlassCard>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
-        <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-          <Icon className="h-6 w-6 text-white" />
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-4xl font-bold text-foreground mb-2">{value}</div>
-        {delta && (
-          <div className="flex items-center space-x-2">
-            <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
-              <TrendingUp className="h-3 w-3 text-green-600" />
-              <span className="text-xs font-bold text-green-600">{delta}</span>
-            </div>
-            <p className="text-sm text-muted-foreground">{deltaLabel ?? "vs ayer"}</p>
-          </div>
-        )}
-      </CardContent>
-    </GlassCard>
-  )
-}
+const upcomingAppointments = [
+  { id: 1, name: "Luis García", service: "Fade Clásico", time: "16:00", phone: "+1234567890", duration: "30 min" },
+  { id: 2, name: "Pedro Martín", service: "Corte Tijera", time: "16:30", phone: "+1234567891", duration: "35 min" },
+  { id: 3, name: "Antonio López", service: "Buzz Cut", time: "17:00", phone: "+1234567892", duration: "20 min" },
+]
 
-function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
-  return (
-    <div className="flex items-center justify-center p-6 rounded-xl border bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-200">
-      <AlertTriangle className="mr-3 h-5 w-5" />
-      <span className="mr-4 font-medium">{message}</span>
-      {onRetry && (
-        <Button size="sm" variant="outline" onClick={onRetry} className="border-red-300">
-          <RefreshCcw className="h-4 w-4 mr-2" /> Reintentar
-        </Button>
-      )}
-    </div>
-  )
-}
+const inventoryData = [
+  { id: 1, name: "Shampoo Premium", category: "Cuidado", stock: 12, minStock: 5, price: 25, status: "ok" },
+  { id: 2, name: "Cera para Cabello", category: "Styling", stock: 3, minStock: 8, price: 18, status: "low" },
+  { id: 3, name: "Aceite para Barba", category: "Barba", stock: 8, minStock: 5, price: 22, status: "ok" },
+  {
+    id: 4,
+    name: "Tijeras Profesionales",
+    category: "Herramientas",
+    stock: 2,
+    minStock: 3,
+    price: 120,
+    status: "critical",
+  },
+  { id: 5, name: "Máquina Clipper", category: "Herramientas", stock: 4, minStock: 2, price: 180, status: "ok" },
+  { id: 6, name: "Toallas Premium", category: "Accesorios", stock: 15, minStock: 10, price: 12, status: "ok" },
+]
 
-function LoadingState() {
-  return (
-    <div className="flex items-center justify-center min-h-[40vh]">
-      <div className="flex flex-col items-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-muted-foreground">Cargando datos…</p>
-      </div>
-    </div>
-  )
-}
+const clientHistory = [
+  {
+    id: 1,
+    clientName: "Carlos Mendoza",
+    visits: [
+      {
+        date: "2024-06-10",
+        service: "Fade Clásico",
+        price: 25,
+        rating: 5,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=fade-result-1",
+      },
+      {
+        date: "2024-05-15",
+        service: "Corte + Barba",
+        price: 35,
+        rating: 5,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=fade-result-2",
+      },
+      {
+        date: "2024-04-20",
+        service: "Fade Clásico",
+        price: 25,
+        rating: 4,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=fade-result-3",
+      },
+    ],
+    preferences: "Le gusta el fade bajo, sin barba muy corta",
+    allergies: "Ninguna",
+    totalSpent: 285,
+    loyaltyPoints: 28,
+  },
+  {
+    id: 2,
+    clientName: "Miguel Torres",
+    visits: [
+      {
+        date: "2024-06-12",
+        service: "Pompadour",
+        price: 30,
+        rating: 5,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=pompadour-result-1",
+      },
+      {
+        date: "2024-05-28",
+        service: "Corte Tijera",
+        price: 28,
+        rating: 4,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=pompadour-result-2",
+      },
+    ],
+    preferences: "Prefiere cortes con volumen, usa productos naturales",
+    allergies: "Alérgico a productos con alcohol",
+    totalSpent: 158,
+    loyaltyPoints: 15,
+  },
+]
 
-// ---- Componente principal --------------------------------------------------
-export default function BarberDashboard() {
-  const { barbers, loading: loadingBarbers, error: errorBarbers, refetch: refetchBarbers } = useBarbers()
-  const { services, loading: loadingServices, error: errorServices, refetch: refetchServices } = useServices()
-  const {
-    appointments,
-    loading: loadingAppointments,
-    error: errorAppointments,
-    refetch: refetchAppointments,
-  } = useAppointments({ fromISO: todayISO() }) // ejemplo: filtrar por hoy si tu hook lo soporta
+const notifications = [
+  {
+    id: 1,
+    type: "appointment",
+    title: "Cita en 30 minutos",
+    message: "Luis García - Fade Clásico",
+    time: "hace 5 min",
+    urgent: true,
+  },
+  {
+    id: 2,
+    type: "inventory",
+    title: "Stock bajo",
+    message: "Cera para Cabello - Solo quedan 3 unidades",
+    time: "hace 1 hora",
+    urgent: true,
+  },
+  {
+    id: 3,
+    type: "review",
+    title: "Nueva reseña",
+    message: "Carlos Mendoza dejó una reseña de 5 estrellas",
+    time: "hace 2 horas",
+    urgent: false,
+  },
+  {
+    id: 4,
+    type: "payment",
+    title: "Pago recibido",
+    message: "Pago de $35 - Miguel Torres",
+    time: "hace 3 horas",
+    urgent: false,
+  },
+  {
+    id: 5,
+    type: "birthday",
+    title: "Cumpleaños cliente",
+    message: "Juan Pérez cumple años mañana",
+    time: "hace 4 horas",
+    urgent: false,
+  },
+]
 
-  const loading = loadingBarbers || loadingServices || loadingAppointments
-  const anyError = errorBarbers || errorServices || errorAppointments
+const styleGallery = [
+  {
+    id: 1,
+    name: "Fade Moderno",
+    category: "Fade",
+    image: "/placeholder-3491y.png?height=200&width=200&query=modern-fade",
+    likes: 45,
+    trending: true,
+  },
+  {
+    id: 2,
+    name: "Pompadour Clásico",
+    category: "Clásico",
+    image: "/placeholder-3491y.png?height=200&width=200&query=classic-pompadour",
+    likes: 32,
+    trending: false,
+  },
+  {
+    id: 3,
+    name: "Undercut Texturizado",
+    category: "Moderno",
+    image: "/placeholder-3491y.png?height=200&width=200&query=textured-undercut",
+    likes: 28,
+    trending: true,
+  },
+  {
+    id: 4,
+    name: "Buzz Cut Militar",
+    category: "Corto",
+    image: "/placeholder-3491y.png?height=200&width=200&query=military-buzz",
+    likes: 19,
+    trending: false,
+  },
+  {
+    id: 5,
+    name: "Quiff Elegante",
+    category: "Elegante",
+    image: "/placeholder-3491y.png?height=200&width=200&query=elegant-quiff",
+    likes: 37,
+    trending: true,
+  },
+  {
+    id: 6,
+    name: "Fade con Diseño",
+    category: "Artístico",
+    image: "/placeholder-3491y.png?height=200&width=200&query=design-fade",
+    likes: 52,
+    trending: true,
+  },
+]
 
-  // Derivados memoizados
-  const { todayEarnings, todayClients, popularServiceName } = useMemo(() => {
-    const attended = (appointments || []).filter((a: any) => (a.estado || a.status || "").toUpperCase() === "ATENDIDA")
-
-    const earnings = attended.reduce((sum: number, a: any) => sum + (a.service?.price || 0), 0)
-    const clients = attended.length
-
-    let popularName = "N/A"
-    if (services && services.length) {
-      const byService = services.map((s: any) => ({
-        id: s.id ?? s.id_service,
-        name: s.name,
-        count: (appointments || []).filter((a: any) => a.service_id === (s.id ?? s.id_service)).length,
-      }))
-      byService.sort((a, b) => b.count - a.count)
-      popularName = byService[0]?.name ?? "N/A"
-    }
-
-    return { todayEarnings: earnings, todayClients: clients, popularServiceName: popularName }
-  }, [appointments, services])
-
-  if (loading) return <LoadingState />
-  if (anyError)
-    return (
-      <ErrorState
-        message={(anyError as Error)?.message || "No se pudieron cargar los datos"}
-        onRetry={() => {
-          refetchBarbers?.()
-          refetchServices?.()
-          refetchAppointments?.()
-        }}
-      />
-    )
-
+export function BarberDashboard() {
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      {/* Header */}
       <header className="glass-card sticky top-0 z-50 border-b-0">
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
@@ -218,9 +272,12 @@ export default function BarberDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent">
+              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent relative">
                 <Bell className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Notificaciones</span>
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">2</span>
+                </div>
               </Button>
               <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent">
                 <Settings className="h-4 w-4 mr-2" />
@@ -228,7 +285,7 @@ export default function BarberDashboard() {
               </Button>
               <div className="hidden md:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
                 <Calendar className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">{new Date().toLocaleDateString("es-ES")}</span>
+                <span className="text-sm font-semibold text-foreground">15 Junio 2024</span>
               </div>
               <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
                 <AvatarImage src="/barber-shop.png" />
@@ -240,15 +297,70 @@ export default function BarberDashboard() {
       </header>
 
       <div className="flex-1 container mx-auto px-6 py-8">
-        {/* Top Stats */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 animate-fade-in">
-          <StatCard title="Ganancias Hoy" icon={DollarSign} value={fmtMoney(todayEarnings)} delta="+12%" />
-          <StatCard title="Clientes Atendidos" icon={Users} value={`${todayClients}`} delta="+3" />
-          <StatCard title="Servicio Popular" icon={Sparkles} value={popularServiceName} />
-          <GlassCard>
+          <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Satisfacción</CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                Ganancias Hoy
+              </CardTitle>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <DollarSign className="h-6 w-6 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-foreground mb-2">$245</div>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                  <span className="text-xs font-bold text-green-600">+12%</span>
+                </div>
+                <p className="text-sm text-muted-foreground">vs ayer</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-0 hover-lift group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                Clientes Atendidos
+              </CardTitle>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <Users className="h-6 w-6 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-foreground mb-2">12</div>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <TrendingUp className="h-3 w-3 text-blue-600" />
+                  <span className="text-xs font-bold text-blue-600">+3</span>
+                </div>
+                <p className="text-sm text-muted-foreground">vs ayer</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-0 hover-lift group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                Servicio Popular
+              </CardTitle>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-foreground mb-2">Fade</div>
+              <p className="text-sm text-muted-foreground font-medium">35% de todos los servicios</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-0 hover-lift group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                Satisfacción
+              </CardTitle>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
                 <Award className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
@@ -257,41 +369,80 @@ export default function BarberDashboard() {
                 <div className="text-4xl font-bold text-foreground">4.8</div>
                 <div className="flex">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className={`h-5 w-5 ${i < 5 ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
+                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground font-medium">Promedio de {barbers?.length ?? 0} barberos</p>
+              <p className="text-sm text-muted-foreground font-medium">Promedio de 127 reseñas</p>
             </CardContent>
-          </GlassCard>
+          </Card>
         </div>
 
-        {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-8 animate-slide-up">
-          <TabsList className="grid w-full grid-cols-4 glass-card p-2 h-14 rounded-2xl border-0">
-            <TabsTrigger value="overview" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
-              <BarChart3 className="h-4 w-4 mr-2" /> Resumen
+          <TabsList className="grid w-full grid-cols-7 glass-card p-2 h-14 rounded-2xl border-0">
+            <TabsTrigger
+              value="overview"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Resumen
             </TabsTrigger>
-            <TabsTrigger value="clients" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
-              <Users className="h-4 w-4 mr-2" /> Clientes
+            <TabsTrigger
+              value="clients"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Clientes
             </TabsTrigger>
-            <TabsTrigger value="services" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
-              <Scissors className="h-4 w-4 mr-2" /> Servicios
+            <TabsTrigger
+              value="services"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+            >
+              <Scissors className="h-4 w-4 mr-2" />
+              Servicios
             </TabsTrigger>
-            <TabsTrigger value="appointments" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
-              <Calendar className="h-4 w-4 mr-2" /> Citas
+            <TabsTrigger
+              value="appointments"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Citas
+            </TabsTrigger>
+            <TabsTrigger
+              value="inventory"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Inventario
+            </TabsTrigger>
+            <TabsTrigger
+              value="gallery"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+            >
+              <Camera className="h-4 w-4 mr-2" />
+              Galería
+            </TabsTrigger>
+            <TabsTrigger
+              value="notifications"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift relative"
+            >
+              <Bell className="h-4 w-4 mr-2" />
+              Alertas
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
             </TabsTrigger>
           </TabsList>
 
-          {/* Overview */}
           <TabsContent value="overview" className="space-y-8">
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
-              <GlassCard className="col-span-4">
+              <Card className="col-span-4 glass-card border-0 hover-lift">
                 <CardHeader className="pb-6">
                   <CardTitle className="text-2xl font-bold text-foreground flex items-center">
-                    <TrendingUp className="h-6 w-6 mr-3 text-primary" /> Evolución de Ingresos
+                    <TrendingUp className="h-6 w-6 mr-3 text-primary" />
+                    Evolución de Ingresos
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground text-base">Rendimiento financiero de los últimos 6 meses</CardDescription>
+                  <CardDescription className="text-muted-foreground text-base">
+                    Rendimiento financiero de los últimos 6 meses
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="pl-2">
                   <ResponsiveContainer width="100%" height={350}>
@@ -303,29 +454,76 @@ export default function BarberDashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 16 }} formatter={(value: any) => [`$${value}`, "Ingresos"]} />
-                      <Area type="monotone" dataKey="earnings" stroke="hsl(var(--primary))" strokeWidth={3} fill="url(#colorEarnings)" dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, stroke: "hsl(var(--primary))", strokeWidth: 3 }} />
+                      <XAxis
+                        dataKey="name"
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                      />
+                      <YAxis
+                        stroke="hsl(var(--muted-foreground))"
+                        fontSize={12}
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) => `$${value}`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "16px",
+                          boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)",
+                        }}
+                        formatter={(value) => [`$${value}`, "Ingresos"]}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="earnings"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={3}
+                        fill="url(#colorEarnings)"
+                        dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 6 }}
+                        activeDot={{ r: 8, stroke: "hsl(var(--primary))", strokeWidth: 3 }}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
-              </GlassCard>
+              </Card>
 
-              <GlassCard className="col-span-3">
+              {/* Haircut Types Chart */}
+              <Card className="col-span-3 glass-card border-0 hover-lift">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl font-bold text-foreground">Servicios Populares</CardTitle>
-                  <CardDescription className="text-muted-foreground text-base">Distribución de servicios más solicitados</CardDescription>
+                  <CardDescription className="text-muted-foreground text-base">
+                    Distribución de servicios más solicitados
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={240}>
                     <PieChart>
-                      <Pie data={haircutTypes} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3} dataKey="value">
+                      <Pie
+                        data={haircutTypes}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={90}
+                        paddingAngle={3}
+                        dataKey="value"
+                      >
                         {haircutTypes.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 16 }} formatter={(value: any) => [`${value}%`, "Porcentaje"]} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border))",
+                          borderRadius: "16px",
+                          boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)",
+                        }}
+                        formatter={(value) => [`${value}%`, "Porcentaje"]}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="grid grid-cols-1 gap-3 mt-6">
@@ -343,232 +541,522 @@ export default function BarberDashboard() {
                     ))}
                   </div>
                 </CardContent>
-              </GlassCard>
+              </Card>
             </div>
 
-            {/* Actividad reciente */}
-            <GlassCard>
+            {/* Recent Activity */}
+            <Card className="glass-card border-0 hover-lift">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-bold text-foreground">Actividad Reciente</CardTitle>
-                <CardDescription className="text-muted-foreground text-base">Últimos clientes atendidos hoy</CardDescription>
+                <CardDescription className="text-muted-foreground text-base">
+                  Últimos clientes atendidos hoy
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {(appointments || [])
-                    .filter((a: any) => (a.estado || a.status || "").toUpperCase() === "ATENDIDA")
-                    .slice(0, 5)
-                    .map((a: any) => (
-                      <div key={a.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors">
-                        <div className="flex items-center space-x-4">
-                          <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
-                            <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${a.client_id}`} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                              {(a.client?.name || "C")
-                                .split(" ")
-                                .map((n: string) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-semibold text-foreground">{a.client?.name || "Cliente"}</p>
-                            <p className="text-sm text-muted-foreground">{a.service?.name || "Servicio"}</p>
-                            <p className="text-xs text-muted-foreground">{fmtTime(a.fecha_hora)}</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-6">
-                          <div className="text-right">
-                            <p className="font-bold text-lg text-foreground">{fmtMoney(a.service?.price)}</p>
-                            <p className="text-sm text-muted-foreground">{a.service?.duration_min || 0} min</p>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                            ))}
-                          </div>
+                  {recentClients.map((client) => (
+                    <div
+                      key={client.id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
+                          <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${client.id}`} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {client.name
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-foreground">{client.name}</p>
+                          <p className="text-sm text-muted-foreground">{client.service}</p>
+                          <p className="text-xs text-muted-foreground">{client.visits} visitas</p>
                         </div>
                       </div>
-                    ))}
+                      <div className="flex items-center space-x-6">
+                        <div className="text-right">
+                          <p className="font-bold text-lg text-foreground">${client.price}</p>
+                          <p className="text-sm text-muted-foreground">{client.time}</p>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {[...Array(client.rating)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
-            </GlassCard>
+            </Card>
           </TabsContent>
 
-          {/* Clientes */}
+          <TabsContent value="inventory" className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Gestión de Inventario</h2>
+                <p className="text-muted-foreground text-base">Control de productos y herramientas</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Agregar Producto
+                </Button>
+              </div>
+            </div>
+
+            {/* Alertas de stock */}
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-red-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Stock Crítico</p>
+                      <p className="text-2xl font-bold text-red-600">1</p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-yellow-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Stock Bajo</p>
+                      <p className="text-2xl font-bold text-yellow-600">1</p>
+                    </div>
+                    <Package className="h-8 w-8 text-yellow-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-green-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Valor Total</p>
+                      <p className="text-2xl font-bold text-green-600">$1,247</p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Lista de productos */}
+            <Card className="glass-card border-0 hover-lift">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-foreground">Productos en Stock</CardTitle>
+                <CardDescription>Gestiona tu inventario de productos y herramientas</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {inventoryData.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            item.status === "critical"
+                              ? "bg-red-500"
+                              : item.status === "low"
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                          }`}
+                        ></div>
+                        <div>
+                          <p className="font-semibold text-foreground">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">{item.category}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-6">
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">Stock</p>
+                          <p className="font-bold text-foreground">{item.stock}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">Mín.</p>
+                          <p className="font-bold text-foreground">{item.minStock}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">Precio</p>
+                          <p className="font-bold text-foreground">${item.price}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="gallery" className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Galería de Estilos</h2>
+                <p className="text-muted-foreground text-base">Catálogo visual de cortes y estilos</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                  <Upload className="h-4 w-4 mr-2" />
+                  Subir Foto
+                </Button>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo Estilo
+                </Button>
+              </div>
+            </div>
+
+            {/* Filtros de categoría */}
+            <div className="flex flex-wrap gap-2">
+              {["Todos", "Fade", "Clásico", "Moderno", "Corto", "Elegante", "Artístico"].map((category) => (
+                <Button
+                  key={category}
+                  variant={category === "Todos" ? "default" : "outline"}
+                  size="sm"
+                  className={
+                    category === "Todos"
+                      ? "gradient-bg text-white"
+                      : "border-border hover:bg-muted/50 bg-transparent hover-lift"
+                  }
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+
+            {/* Galería de estilos */}
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {styleGallery.map((style) => (
+                <Card key={style.id} className="glass-card border-0 hover-lift group overflow-hidden">
+                  <div className="relative">
+                    <img
+                      src={style.image || "/placeholder.svg"}
+                      alt={style.name}
+                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    {style.trending && (
+                      <Badge className="absolute top-4 left-4 gradient-bg text-white border-0 shadow-lg">
+                        <Zap className="h-3 w-3 mr-1" />
+                        Trending
+                      </Badge>
+                    )}
+                    <div className="absolute top-4 right-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
+                      <Heart className="h-3 w-3 text-white" />
+                      <span className="text-xs text-white font-medium">{style.likes}</span>
+                    </div>
+                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <div className="flex space-x-2">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="bg-white/20 backdrop-blur-sm text-white border-0"
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Ver
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="bg-white/20 backdrop-blur-sm text-white border-0"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                  <CardHeader className="pb-4">
+                    <div className="flex justify-between items-start">
+                      <CardTitle className="text-lg font-bold text-foreground">{style.name}</CardTitle>
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                        {style.category}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                </Card>
+              ))}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Centro de Notificaciones</h2>
+                <p className="text-muted-foreground text-base">Mantente al día con todas las alertas</p>
+              </div>
+              <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                <UserCheck className="h-4 w-4 mr-2" />
+                Marcar Todo Leído
+              </Button>
+            </div>
+
+            {/* Resumen de notificaciones */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className="glass-card border-0 hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Urgentes</p>
+                      <p className="text-2xl font-bold text-red-600">2</p>
+                    </div>
+                    <AlertTriangle className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Citas Hoy</p>
+                      <p className="text-2xl font-bold text-blue-600">3</p>
+                    </div>
+                    <Calendar className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Reseñas</p>
+                      <p className="text-2xl font-bold text-green-600">1</p>
+                    </div>
+                    <Star className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Cumpleaños</p>
+                      <p className="text-2xl font-bold text-purple-600">1</p>
+                    </div>
+                    <Gift className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Lista de notificaciones */}
+            <Card className="glass-card border-0 hover-lift">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-foreground">Notificaciones Recientes</CardTitle>
+                <CardDescription>Últimas alertas y actualizaciones</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`flex items-center justify-between p-4 rounded-xl transition-colors ${
+                        notification.urgent
+                          ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                          : "bg-muted/20 hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            notification.type === "appointment"
+                              ? "bg-blue-100 dark:bg-blue-900/30"
+                              : notification.type === "inventory"
+                                ? "bg-yellow-100 dark:bg-yellow-900/30"
+                                : notification.type === "review"
+                                  ? "bg-green-100 dark:bg-green-900/30"
+                                  : notification.type === "payment"
+                                    ? "bg-emerald-100 dark:bg-emerald-900/30"
+                                    : "bg-purple-100 dark:bg-purple-900/30"
+                          }`}
+                        >
+                          {notification.type === "appointment" && <Calendar className="h-5 w-5 text-blue-600" />}
+                          {notification.type === "inventory" && <Package className="h-5 w-5 text-yellow-600" />}
+                          {notification.type === "review" && <Star className="h-5 w-5 text-green-600" />}
+                          {notification.type === "payment" && <CreditCard className="h-5 w-5 text-emerald-600" />}
+                          {notification.type === "birthday" && <Gift className="h-5 w-5 text-purple-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">{notification.title}</p>
+                          <p className="text-sm text-muted-foreground">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground">{notification.time}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {notification.urgent && (
+                          <Badge variant="destructive" className="bg-red-500 text-white">
+                            Urgente
+                          </Badge>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           <TabsContent value="clients" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Gestión de Clientes</h2>
-                <p className="text-muted-foreground text-base">Administra tu base de clientes</p>
+                <p className="text-muted-foreground text-base">Administra tu base de clientes y su historial</p>
               </div>
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
-                <Plus className="h-4 w-4 mr-2" /> Nuevo Cliente
+                <Plus className="h-4 w-4 mr-2" />
+                Nuevo Cliente
               </Button>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <input placeholder="Buscar clientes…" className="w-full pl-10 pr-4 py-3 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" />
+                <input
+                  placeholder="Buscar clientes..."
+                  className="w-full pl-10 pr-4 py-3 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                />
               </div>
               <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                <Filter className="h-4 w-4 mr-2" /> Filtros
+                <Filter className="h-4 w-4 mr-2" />
+                Filtros
               </Button>
             </div>
 
-            <GlassCard>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {(appointments || [])
-                    .filter((a: any) => !!a.client)
-                    .map((a: any) => (
-                      <div key={a.id} className="p-6 hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-4">
-                            <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
-                              <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${a.client_id}`} />
-                              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                                {(a.client?.name || "C")
-                                  .split(" ")
-                                  .map((n: string) => n[0])
-                                  .join("")}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div>
-                              <p className="font-semibold text-foreground">{a.client?.name || "Cliente"}</p>
-                              <p className="text-sm text-muted-foreground">Último servicio: {a.service?.name || "Servicio"}</p>
-                              <p className="text-xs text-muted-foreground">{new Date(a.fecha_hora).toLocaleDateString("es-ES")}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-3">
-                            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                              {a.estado || a.status}
-                            </Badge>
-                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                              Ver Perfil
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              </CardContent>
-            </GlassCard>
-          </TabsContent>
-
-          {/* Servicios */}
-          <TabsContent value="services" className="space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">Servicios y Precios</h2>
-                <p className="text-muted-foreground text-base">Gestiona tu catálogo de servicios</p>
-              </div>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
-                <Plus className="h-4 w-4 mr-2" /> Nuevo Servicio
-              </Button>
-            </div>
-
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {(services || []).map((s: any) => {
-                const bookings = (appointments || []).filter((a: any) => a.service_id === (s.id ?? s.id_service)).length
-                const popularity = Math.max(0, Math.min(100, Math.round(((bookings || 0) / Math.max(1, appointments?.length || 1)) * 100)))
-                return (
-                  <GlassCard key={s.id ?? s.id_service} className="group">
-                    <CardHeader className="pb-4">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg font-bold text-foreground">{s.name}</CardTitle>
-                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold">
-                          {fmtMoney(s.price)}
-                        </Badge>
-                      </div>
-                      <CardDescription className="text-muted-foreground text-base">
-                        Duración: {s.duration_min ?? s.duration ?? 0} min • {bookings} reservas
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground font-medium">Popularidad</span>
-                          <span className="text-foreground font-semibold">{popularity}%</span>
-                        </div>
-                        <Progress value={popularity} className="h-2" />
-                      </div>
-                      <div className="flex space-x-2 mt-6">
-                        <Button variant="outline" size="sm" className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift">
-                          <Edit className="h-4 w-4 mr-1" /> Editar
-                        </Button>
-                        <Button variant="outline" size="sm" className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift">
-                          Estadísticas
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </GlassCard>
-                )
-              })}
-            </div>
-          </TabsContent>
-
-          {/* Citas */}
-          <TabsContent value="appointments" className="space-y-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold text-foreground">Próximas Citas</h2>
-                <p className="text-muted-foreground text-base">Agenda del día de hoy</p>
-              </div>
-              <div className="flex gap-2">
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
-                  <Plus className="h-4 w-4 mr-2" /> Nueva Cita
-                </Button>
-                <Button variant="outline" onClick={() => refetchAppointments?.()}>
-                  <RefreshCcw className="h-4 w-4 mr-2" /> Refrescar
-                </Button>
-              </div>
-            </div>
-
-            <GlassCard>
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl font-bold text-foreground">Citas de Hoy</CardTitle>
-                <CardDescription className="text-muted-foreground text-base">
-                  {(appointments || []).filter((a: any) => (a.estado || a.status) !== "CANCELADA").length} citas programadas
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {(appointments || [])
-                    .filter((a: any) => (a.estado || a.status) !== "CANCELADA")
-                    .slice(0, 12)
-                    .map((a: any) => (
-                      <div key={a.id} className="flex items-center justify-between p-5 rounded-xl border border-border bg-muted/10 hover:bg-muted/20 transition-colors">
-                        <div className="flex items-center space-x-4">
-                          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-                            <Clock className="h-6 w-6 text-primary" />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground">{a.client?.name || "Cliente"}</p>
-                            <p className="text-sm text-muted-foreground">{a.service?.name || "Servicio"}</p>
-                            <p className="text-xs text-muted-foreground">{a.client?.phone} • {a.service?.duration_min || 0} min</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-4">
-                          <div className="text-right">
-                            <p className="font-bold text-lg text-foreground">{fmtTime(a.fecha_hora)}</p>
+            {/* Historial detallado de clientes */}
+            <div className="space-y-6">
+              {clientHistory.map((client) => (
+                <Card key={client.id} className="glass-card border-0 hover-lift">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="h-16 w-16 ring-2 ring-primary/10">
+                          <AvatarImage src={`/placeholder-3491y.png?height=64&width=64&query=client-${client.id}`} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
+                            {client.clientName
+                              .split(" ")
+                              .map((n) => n[0])
+                              .join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h3 className="text-xl font-bold text-foreground">{client.clientName}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {client.visits.length} visitas • ${client.totalSpent} gastado
+                          </p>
+                          <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                              {a.estado || a.status}
+                              {client.loyaltyPoints} puntos
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className="bg-green-100 dark:bg-green-900/30 text-green-600 border-green-200 dark:border-green-800"
+                            >
+                              Cliente VIP
                             </Badge>
                           </div>
-                          <div className="flex gap-2">
-                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                              <Phone className="h-4 w-4 mr-1" /> Llamar
+                        </div>
+                      </div>
+                      <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                        <History className="h-4 w-4 mr-2" />
+                        Ver Historial Completo
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      <div>
+                        <h4 className="font-semibold text-foreground mb-3">Últimas Visitas</h4>
+                        <div className="space-y-3">
+                          {client.visits.slice(0, 3).map((visit, index) => (
+                            <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
+                              <img
+                                src={visit.photo || "/placeholder.svg"}
+                                alt={`Resultado ${visit.service}`}
+                                className="w-12 h-12 rounded-lg object-cover"
+                              />
+                              <div className="flex-1">
+                                <p className="font-medium text-foreground">{visit.service}</p>
+                                <p className="text-sm text-muted-foreground">{visit.date}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-foreground">${visit.price}</p>
+                                <div className="flex items-center">
+                                  {[...Array(visit.rating)].map((_, i) => (
+                                    <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-foreground mb-3">Información Personal</h4>
+                        <div className="space-y-3">
+                          <div className="p-3 rounded-lg bg-muted/20">
+                            <p className="text-sm font-medium text-muted-foreground">Preferencias</p>
+                            <p className="text-foreground">{client.preferences}</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/20">
+                            <p className="text-sm font-medium text-muted-foreground">Alergias</p>
+                            <p className="text-foreground">{client.allergies}</p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
+                            >
+                              <MessageSquare className="h-4 w-4 mr-1" />
+                              Mensaje
                             </Button>
-                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                              Reagendar
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
+                            >
+                              <Phone className="h-4 w-4 mr-1" />
+                              Llamar
                             </Button>
                           </div>
                         </div>
                       </div>
-                    ))}
-                </div>
-              </CardContent>
-            </GlassCard>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </TabsContent>
         </Tabs>
       </div>
