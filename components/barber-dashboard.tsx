@@ -20,6 +20,10 @@ import {
   Award,
   Phone,
   Edit,
+  Settings,
+  Bell,
+  BarChart3,
+  Sparkles,
 } from "lucide-react"
 import {
   PieChart,
@@ -30,8 +34,8 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  LineChart,
-  Line,
+  AreaChart,
+  Area,
 } from "recharts"
 
 // Datos de ejemplo
@@ -68,30 +72,40 @@ const upcomingAppointments = [
 
 export function BarberDashboard() {
   return (
-    <div className="flex flex-col min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card/80 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80 sticky top-0 z-50">
-        <div className="container mx-auto px-6 py-5">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <header className="glass-card sticky top-0 z-50 border-b-0">
+        <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-3">
-                <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 border border-primary/20">
-                  <Scissors className="h-6 w-6 text-primary" />
+              <div className="flex items-center space-x-4">
+                <div className="relative">
+                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl gradient-bg shadow-lg">
+                    <Scissors className="h-7 w-7 text-white" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-foreground tracking-tight">BarberPro</h1>
-                  <p className="text-sm text-muted-foreground">Panel de Control</p>
+                  <h1 className="text-3xl font-bold text-foreground tracking-tight">BarberPro</h1>
+                  <p className="text-sm text-muted-foreground font-medium">Panel Administrativo</p>
                 </div>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="hidden md:flex items-center space-x-2 px-3 py-2 rounded-lg bg-muted/50">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium text-foreground">15 Junio 2024</span>
+              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent">
+                <Bell className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Notificaciones</span>
+              </Button>
+              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent">
+                <Settings className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Configuración</span>
+              </Button>
+              <div className="hidden md:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
+                <Calendar className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-foreground">15 Junio 2024</span>
               </div>
-              <Avatar className="h-10 w-10 ring-2 ring-primary/20">
+              <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
                 <AvatarImage src="/barber-shop.png" />
-                <AvatarFallback className="bg-primary/10 text-primary font-semibold">JD</AvatarFallback>
+                <AvatarFallback className="gradient-bg text-white font-bold text-lg">JD</AvatarFallback>
               </Avatar>
             </div>
           </div>
@@ -99,121 +113,140 @@ export function BarberDashboard() {
       </header>
 
       <div className="flex-1 container mx-auto px-6 py-8">
-        {/* Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card className="card-shadow border-0 bg-gradient-to-br from-card to-card/50">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 animate-fade-in">
+          <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                 Ganancias Hoy
               </CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <DollarSign className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <DollarSign className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground mb-1">$245</div>
+              <div className="text-4xl font-bold text-foreground mb-2">$245</div>
               <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <p className="text-sm text-muted-foreground">
-                  <span className="text-primary font-semibold">+12%</span> vs ayer
-                </p>
+                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                  <span className="text-xs font-bold text-green-600">+12%</span>
+                </div>
+                <p className="text-sm text-muted-foreground">vs ayer</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-shadow border-0 bg-gradient-to-br from-card to-card/50">
+          <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                 Clientes Atendidos
               </CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <Users className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <Users className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground mb-1">12</div>
+              <div className="text-4xl font-bold text-foreground mb-2">12</div>
               <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <p className="text-sm text-muted-foreground">
-                  <span className="text-primary font-semibold">+3</span> vs ayer
-                </p>
+                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <TrendingUp className="h-3 w-3 text-blue-600" />
+                  <span className="text-xs font-bold text-blue-600">+3</span>
+                </div>
+                <p className="text-sm text-muted-foreground">vs ayer</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="card-shadow border-0 bg-gradient-to-br from-card to-card/50">
+          <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                 Servicio Popular
               </CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <Scissors className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <Sparkles className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground mb-1">Fade</div>
-              <p className="text-sm text-muted-foreground">35% de todos los servicios</p>
+              <div className="text-4xl font-bold text-foreground mb-2">Fade</div>
+              <p className="text-sm text-muted-foreground font-medium">35% de todos los servicios</p>
             </CardContent>
           </Card>
 
-          <Card className="card-shadow border-0 bg-gradient-to-br from-card to-card/50">
+          <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
                 Satisfacción
               </CardTitle>
-              <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10">
-                <Award className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <Award className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-foreground mb-1">4.8</div>
-              <p className="text-sm text-muted-foreground">Promedio de 127 reseñas</p>
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="text-4xl font-bold text-foreground">4.8</div>
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Promedio de 127 reseñas</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Main Content */}
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 bg-muted/30 p-1 h-12 rounded-xl">
+        <Tabs defaultValue="overview" className="space-y-8 animate-slide-up">
+          <TabsList className="grid w-full grid-cols-4 glass-card p-2 h-14 rounded-2xl border-0">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg font-semibold transition-all"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
+              <BarChart3 className="h-4 w-4 mr-2" />
               Resumen
             </TabsTrigger>
             <TabsTrigger
               value="clients"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg font-semibold transition-all"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
+              <Users className="h-4 w-4 mr-2" />
               Clientes
             </TabsTrigger>
             <TabsTrigger
               value="services"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg font-semibold transition-all"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
+              <Scissors className="h-4 w-4 mr-2" />
               Servicios
             </TabsTrigger>
             <TabsTrigger
               value="appointments"
-              className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm rounded-lg font-semibold transition-all"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
+              <Calendar className="h-4 w-4 mr-2" />
               Citas
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-              {/* Earnings Chart */}
-              <Card className="col-span-4 card-shadow-lg border-0">
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-xl font-bold text-foreground">Evolución de Ingresos</CardTitle>
-                  <CardDescription className="text-muted-foreground">
+          <TabsContent value="overview" className="space-y-8">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
+              <Card className="col-span-4 glass-card border-0 hover-lift">
+                <CardHeader className="pb-6">
+                  <CardTitle className="text-2xl font-bold text-foreground flex items-center">
+                    <TrendingUp className="h-6 w-6 mr-3 text-primary" />
+                    Evolución de Ingresos
+                  </CardTitle>
+                  <CardDescription className="text-muted-foreground text-base">
                     Rendimiento financiero de los últimos 6 meses
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pl-2">
-                  <ResponsiveContainer width="100%" height={320}>
-                    <LineChart data={earningsData}>
+                  <ResponsiveContainer width="100%" height={350}>
+                    <AreaChart data={earningsData}>
+                      <defs>
+                        <linearGradient id="colorEarnings" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                       <XAxis
                         dataKey="name"
@@ -233,29 +266,30 @@ export function BarberDashboard() {
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
                           border: "1px solid hsl(var(--border))",
-                          borderRadius: "12px",
-                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                          borderRadius: "16px",
+                          boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)",
                         }}
                         formatter={(value) => [`$${value}`, "Ingresos"]}
                       />
-                      <Line
+                      <Area
                         type="monotone"
                         dataKey="earnings"
                         stroke="hsl(var(--primary))"
                         strokeWidth={3}
+                        fill="url(#colorEarnings)"
                         dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 6 }}
-                        activeDot={{ r: 8, stroke: "hsl(var(--primary))", strokeWidth: 2 }}
+                        activeDot={{ r: 8, stroke: "hsl(var(--primary))", strokeWidth: 3 }}
                       />
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
 
               {/* Haircut Types Chart */}
-              <Card className="col-span-3 card-shadow-lg border-0">
+              <Card className="col-span-3 glass-card border-0 hover-lift">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl font-bold text-foreground">Servicios Populares</CardTitle>
-                  <CardDescription className="text-muted-foreground">
+                  <CardDescription className="text-muted-foreground text-base">
                     Distribución de servicios más solicitados
                   </CardDescription>
                 </CardHeader>
@@ -279,8 +313,8 @@ export function BarberDashboard() {
                         contentStyle={{
                           backgroundColor: "hsl(var(--card))",
                           border: "1px solid hsl(var(--border))",
-                          borderRadius: "12px",
-                          boxShadow: "0 10px 15px -3px rgb(0 0 0 / 0.1)",
+                          borderRadius: "16px",
+                          boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)",
                         }}
                         formatter={(value) => [`${value}%`, "Porcentaje"]}
                       />
@@ -305,10 +339,12 @@ export function BarberDashboard() {
             </div>
 
             {/* Recent Activity */}
-            <Card className="card-shadow-lg border-0">
+            <Card className="glass-card border-0 hover-lift">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-bold text-foreground">Actividad Reciente</CardTitle>
-                <CardDescription className="text-muted-foreground">Últimos clientes atendidos hoy</CardDescription>
+                <CardDescription className="text-muted-foreground text-base">
+                  Últimos clientes atendidos hoy
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -318,7 +354,7 @@ export function BarberDashboard() {
                       className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
                     >
                       <div className="flex items-center space-x-4">
-                        <Avatar className="h-12 w-12 ring-2 ring-primary/10">
+                        <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
                           <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${client.id}`} />
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                             {client.name
@@ -351,13 +387,13 @@ export function BarberDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="clients" className="space-y-6">
+          <TabsContent value="clients" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Gestión de Clientes</h2>
-                <p className="text-muted-foreground">Administra tu base de clientes</p>
+                <p className="text-muted-foreground text-base">Administra tu base de clientes</p>
               </div>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Cliente
               </Button>
@@ -371,20 +407,20 @@ export function BarberDashboard() {
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                 />
               </div>
-              <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent">
+              <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
                 <Filter className="h-4 w-4 mr-2" />
                 Filtros
               </Button>
             </div>
 
-            <Card className="card-shadow-lg border-0">
+            <Card className="glass-card border-0 hover-lift">
               <CardContent className="p-0">
                 <div className="divide-y divide-border">
                   {recentClients.map((client) => (
                     <div key={client.id} className="p-6 hover:bg-muted/30 transition-colors">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <Avatar className="h-12 w-12 ring-2 ring-primary/10">
+                          <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
                             <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${client.id}`} />
                             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                               {client.name
@@ -406,7 +442,7 @@ export function BarberDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent"
+                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
                           >
                             Ver Perfil
                           </Button>
@@ -419,19 +455,19 @@ export function BarberDashboard() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="services" className="space-y-6">
+          <TabsContent value="services" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Servicios y Precios</h2>
-                <p className="text-muted-foreground">Gestiona tu catálogo de servicios</p>
+                <p className="text-muted-foreground text-base">Gestiona tu catálogo de servicios</p>
               </div>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Servicio
               </Button>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
               {[
                 { name: "Fade Clásico", price: 25, duration: "30 min", popularity: 85, bookings: 87 },
                 { name: "Corte + Barba", price: 35, duration: "45 min", popularity: 70, bookings: 62 },
@@ -440,7 +476,7 @@ export function BarberDashboard() {
                 { name: "Corte Tijera", price: 28, duration: "35 min", popularity: 55, bookings: 42 },
                 { name: "Arreglo Barba", price: 15, duration: "20 min", popularity: 40, bookings: 28 },
               ].map((service, index) => (
-                <Card key={index} className="card-shadow border-0 hover:shadow-lg transition-shadow">
+                <Card key={index} className="glass-card border-0 hover-lift group">
                   <CardHeader className="pb-4">
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg font-bold text-foreground">{service.name}</CardTitle>
@@ -448,7 +484,7 @@ export function BarberDashboard() {
                         ${service.price}
                       </Badge>
                     </div>
-                    <CardDescription className="text-muted-foreground">
+                    <CardDescription className="text-muted-foreground text-base">
                       Duración: {service.duration} • {service.bookings} reservas
                     </CardDescription>
                   </CardHeader>
@@ -464,7 +500,7 @@ export function BarberDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 border-border hover:bg-muted/50 bg-transparent"
+                        className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
                       >
                         <Edit className="h-4 w-4 mr-1" />
                         Editar
@@ -472,7 +508,7 @@ export function BarberDashboard() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="flex-1 border-border hover:bg-muted/50 bg-transparent"
+                        className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
                       >
                         Estadísticas
                       </Button>
@@ -483,22 +519,22 @@ export function BarberDashboard() {
             </div>
           </TabsContent>
 
-          <TabsContent value="appointments" className="space-y-6">
+          <TabsContent value="appointments" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Próximas Citas</h2>
-                <p className="text-muted-foreground">Agenda del día de hoy</p>
+                <p className="text-muted-foreground text-base">Agenda del día de hoy</p>
               </div>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg">
+              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
                 <Plus className="h-4 w-4 mr-2" />
                 Nueva Cita
               </Button>
             </div>
 
-            <Card className="card-shadow-lg border-0">
+            <Card className="glass-card border-0 hover-lift">
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-bold text-foreground">Hoy - 15 de Junio</CardTitle>
-                <CardDescription className="text-muted-foreground">
+                <CardDescription className="text-muted-foreground text-base">
                   {upcomingAppointments.length} citas programadas
                 </CardDescription>
               </CardHeader>
@@ -532,7 +568,7 @@ export function BarberDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent"
+                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
                           >
                             <Phone className="h-4 w-4 mr-1" />
                             Llamar
@@ -540,7 +576,7 @@ export function BarberDashboard() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent"
+                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
                           >
                             Reagendar
                           </Button>
