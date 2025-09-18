@@ -1,5 +1,8 @@
+
+
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -24,6 +27,9 @@ import {
   Bell,
   BarChart3,
   Sparkles,
+  Loader2,
+  RefreshCcw,
+  AlertTriangle,
 } from "lucide-react"
 import {
   PieChart,
@@ -37,8 +43,24 @@ import {
   AreaChart,
   Area,
 } from "recharts"
+import { useBarbers, useServices, useAppointments } from "@/lib/hooks/useSupabase"
 
-// Datos de ejemplo
+// ---- Helpers ---------------------------------------------------------------
+const fmtMoney = (n: number | undefined | null) =>
+  new Intl.NumberFormat("es-NI", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(
+    Number.isFinite(n as number) ? (n as number) : 0
+  )
+
+const fmtTime = (d: string | Date | undefined) =>
+  d ? new Date(d).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }) : "--:--"
+
+const todayISO = () => {
+  const d = new Date()
+  d.setHours(0, 0, 0, 0)
+  return d.toISOString()
+}
+
+// Datos de ejemplo para el gráfico (se muestran aunque no haya ventas aún)
 const earningsData = [
   { name: "Ene", earnings: 4200, clients: 168 },
   { name: "Feb", earnings: 3800, clients: 152 },
@@ -56,23 +78,128 @@ const haircutTypes = [
   { name: "Otros", value: 8, color: "hsl(var(--chart-5))", count: 20 },
 ]
 
-const recentClients = [
-  { id: 1, name: "Carlos Mendoza", service: "Fade Clásico", time: "10:30", price: 25, rating: 5, visits: 12 },
-  { id: 2, name: "Miguel Torres", service: "Corte + Barba", time: "11:15", price: 35, rating: 5, visits: 8 },
-  { id: 3, name: "Juan Pérez", service: "Buzz Cut", time: "12:00", price: 20, rating: 4, visits: 15 },
-  { id: 4, name: "Roberto Silva", service: "Pompadour", time: "14:30", price: 30, rating: 5, visits: 6 },
-  { id: 5, name: "Diego Ramírez", service: "Fade + Barba", time: "15:45", price: 40, rating: 5, visits: 9 },
-]
+// ---- UI piezas reutilizables ----------------------------------------------
+function GlassCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <Card className={`glass-card border-0 hover-lift ${className}`}>
+      {children}
+    </Card>
+  )
+}
 
-const upcomingAppointments = [
-  { id: 1, name: "Luis García", service: "Fade Clásico", time: "16:00", phone: "+1234567890", duration: "30 min" },
-  { id: 2, name: "Pedro Martín", service: "Corte Tijera", time: "16:30", phone: "+1234567891", duration: "35 min" },
-  { id: 3, name: "Antonio López", service: "Buzz Cut", time: "17:00", phone: "+1234567892", duration: "20 min" },
-]
+function StatCard({
+  title,
+  icon: Icon,
+  value,
+  delta,
+  deltaLabel,
+}: {
+  title: string
+  icon: any
+  value: string
+  delta?: string
+  deltaLabel?: string
+}) {
+  return (
+    <GlassCard>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{title}</CardTitle>
+        <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+          <Icon className="h-6 w-6 text-white" />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="text-4xl font-bold text-foreground mb-2">{value}</div>
+        {delta && (
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
+              <TrendingUp className="h-3 w-3 text-green-600" />
+              <span className="text-xs font-bold text-green-600">{delta}</span>
+            </div>
+            <p className="text-sm text-muted-foreground">{deltaLabel ?? "vs ayer"}</p>
+          </div>
+        )}
+      </CardContent>
+    </GlassCard>
+  )
+}
 
-export function BarberDashboard() {
+function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  return (
+    <div className="flex items-center justify-center p-6 rounded-xl border bg-red-50 text-red-900 dark:bg-red-900/20 dark:text-red-200">
+      <AlertTriangle className="mr-3 h-5 w-5" />
+      <span className="mr-4 font-medium">{message}</span>
+      {onRetry && (
+        <Button size="sm" variant="outline" onClick={onRetry} className="border-red-300">
+          <RefreshCcw className="h-4 w-4 mr-2" /> Reintentar
+        </Button>
+      )}
+    </div>
+  )
+}
+
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh]">
+      <div className="flex flex-col items-center space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-muted-foreground">Cargando datos…</p>
+      </div>
+    </div>
+  )
+}
+
+// ---- Componente principal --------------------------------------------------
+export default function BarberDashboard() {
+  const { barbers, loading: loadingBarbers, error: errorBarbers, refetch: refetchBarbers } = useBarbers()
+  const { services, loading: loadingServices, error: errorServices, refetch: refetchServices } = useServices()
+  const {
+    appointments,
+    loading: loadingAppointments,
+    error: errorAppointments,
+    refetch: refetchAppointments,
+  } = useAppointments({ fromISO: todayISO() }) // ejemplo: filtrar por hoy si tu hook lo soporta
+
+  const loading = loadingBarbers || loadingServices || loadingAppointments
+  const anyError = errorBarbers || errorServices || errorAppointments
+
+  // Derivados memoizados
+  const { todayEarnings, todayClients, popularServiceName } = useMemo(() => {
+    const attended = (appointments || []).filter((a: any) => (a.estado || a.status || "").toUpperCase() === "ATENDIDA")
+
+    const earnings = attended.reduce((sum: number, a: any) => sum + (a.service?.price || 0), 0)
+    const clients = attended.length
+
+    let popularName = "N/A"
+    if (services && services.length) {
+      const byService = services.map((s: any) => ({
+        id: s.id ?? s.id_service,
+        name: s.name,
+        count: (appointments || []).filter((a: any) => a.service_id === (s.id ?? s.id_service)).length,
+      }))
+      byService.sort((a, b) => b.count - a.count)
+      popularName = byService[0]?.name ?? "N/A"
+    }
+
+    return { todayEarnings: earnings, todayClients: clients, popularServiceName: popularName }
+  }, [appointments, services])
+
+  if (loading) return <LoadingState />
+  if (anyError)
+    return (
+      <ErrorState
+        message={(anyError as Error)?.message || "No se pudieron cargar los datos"}
+        onRetry={() => {
+          refetchBarbers?.()
+          refetchServices?.()
+          refetchAppointments?.()
+        }}
+      />
+    )
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      {/* Header */}
       <header className="glass-card sticky top-0 z-50 border-b-0">
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
@@ -101,7 +228,7 @@ export function BarberDashboard() {
               </Button>
               <div className="hidden md:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
                 <Calendar className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">15 Junio 2024</span>
+                <span className="text-sm font-semibold text-foreground">{new Date().toLocaleDateString("es-ES")}</span>
               </div>
               <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
                 <AvatarImage src="/barber-shop.png" />
@@ -113,70 +240,15 @@ export function BarberDashboard() {
       </header>
 
       <div className="flex-1 container mx-auto px-6 py-8">
+        {/* Top Stats */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 animate-fade-in">
-          <Card className="glass-card border-0 hover-lift group">
+          <StatCard title="Ganancias Hoy" icon={DollarSign} value={fmtMoney(todayEarnings)} delta="+12%" />
+          <StatCard title="Clientes Atendidos" icon={Users} value={`${todayClients}`} delta="+3" />
+          <StatCard title="Servicio Popular" icon={Sparkles} value={popularServiceName} />
+          <GlassCard>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Ganancias Hoy
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <DollarSign className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">$245</div>
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
-                  <TrendingUp className="h-3 w-3 text-green-600" />
-                  <span className="text-xs font-bold text-green-600">+12%</span>
-                </div>
-                <p className="text-sm text-muted-foreground">vs ayer</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Clientes Atendidos
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">12</div>
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                  <TrendingUp className="h-3 w-3 text-blue-600" />
-                  <span className="text-xs font-bold text-blue-600">+3</span>
-                </div>
-                <p className="text-sm text-muted-foreground">vs ayer</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Servicio Popular
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Sparkles className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">Fade</div>
-              <p className="text-sm text-muted-foreground font-medium">35% de todos los servicios</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Satisfacción
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">Satisfacción</CardTitle>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg">
                 <Award className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
@@ -185,58 +257,41 @@ export function BarberDashboard() {
                 <div className="text-4xl font-bold text-foreground">4.8</div>
                 <div className="flex">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    <Star key={i} className={`h-5 w-5 ${i < 5 ? "fill-yellow-400 text-yellow-400" : "text-gray-300"}`} />
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground font-medium">Promedio de 127 reseñas</p>
+              <p className="text-sm text-muted-foreground font-medium">Promedio de {barbers?.length ?? 0} barberos</p>
             </CardContent>
-          </Card>
+          </GlassCard>
         </div>
 
+        {/* Tabs */}
         <Tabs defaultValue="overview" className="space-y-8 animate-slide-up">
           <TabsList className="grid w-full grid-cols-4 glass-card p-2 h-14 rounded-2xl border-0">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Resumen
+            <TabsTrigger value="overview" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
+              <BarChart3 className="h-4 w-4 mr-2" /> Resumen
             </TabsTrigger>
-            <TabsTrigger
-              value="clients"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
-            >
-              <Users className="h-4 w-4 mr-2" />
-              Clientes
+            <TabsTrigger value="clients" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
+              <Users className="h-4 w-4 mr-2" /> Clientes
             </TabsTrigger>
-            <TabsTrigger
-              value="services"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
-            >
-              <Scissors className="h-4 w-4 mr-2" />
-              Servicios
+            <TabsTrigger value="services" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
+              <Scissors className="h-4 w-4 mr-2" /> Servicios
             </TabsTrigger>
-            <TabsTrigger
-              value="appointments"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
-            >
-              <Calendar className="h-4 w-4 mr-2" />
-              Citas
+            <TabsTrigger value="appointments" className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift">
+              <Calendar className="h-4 w-4 mr-2" /> Citas
             </TabsTrigger>
           </TabsList>
 
+          {/* Overview */}
           <TabsContent value="overview" className="space-y-8">
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
-              <Card className="col-span-4 glass-card border-0 hover-lift">
+              <GlassCard className="col-span-4">
                 <CardHeader className="pb-6">
                   <CardTitle className="text-2xl font-bold text-foreground flex items-center">
-                    <TrendingUp className="h-6 w-6 mr-3 text-primary" />
-                    Evolución de Ingresos
+                    <TrendingUp className="h-6 w-6 mr-3 text-primary" /> Evolución de Ingresos
                   </CardTitle>
-                  <CardDescription className="text-muted-foreground text-base">
-                    Rendimiento financiero de los últimos 6 meses
-                  </CardDescription>
+                  <CardDescription className="text-muted-foreground text-base">Rendimiento financiero de los últimos 6 meses</CardDescription>
                 </CardHeader>
                 <CardContent className="pl-2">
                   <ResponsiveContainer width="100%" height={350}>
@@ -248,76 +303,29 @@ export function BarberDashboard() {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis
-                        dataKey="name"
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                      />
-                      <YAxis
-                        stroke="hsl(var(--muted-foreground))"
-                        fontSize={12}
-                        tickLine={false}
-                        axisLine={false}
-                        tickFormatter={(value) => `$${value}`}
-                      />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "16px",
-                          boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)",
-                        }}
-                        formatter={(value) => [`$${value}`, "Ingresos"]}
-                      />
-                      <Area
-                        type="monotone"
-                        dataKey="earnings"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={3}
-                        fill="url(#colorEarnings)"
-                        dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 6 }}
-                        activeDot={{ r: 8, stroke: "hsl(var(--primary))", strokeWidth: 3 }}
-                      />
+                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 16 }} formatter={(value: any) => [`$${value}`, "Ingresos"]} />
+                      <Area type="monotone" dataKey="earnings" stroke="hsl(var(--primary))" strokeWidth={3} fill="url(#colorEarnings)" dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }} activeDot={{ r: 6, stroke: "hsl(var(--primary))", strokeWidth: 3 }} />
                     </AreaChart>
                   </ResponsiveContainer>
                 </CardContent>
-              </Card>
+              </GlassCard>
 
-              {/* Haircut Types Chart */}
-              <Card className="col-span-3 glass-card border-0 hover-lift">
+              <GlassCard className="col-span-3">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-xl font-bold text-foreground">Servicios Populares</CardTitle>
-                  <CardDescription className="text-muted-foreground text-base">
-                    Distribución de servicios más solicitados
-                  </CardDescription>
+                  <CardDescription className="text-muted-foreground text-base">Distribución de servicios más solicitados</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={240}>
                     <PieChart>
-                      <Pie
-                        data={haircutTypes}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={90}
-                        paddingAngle={3}
-                        dataKey="value"
-                      >
+                      <Pie data={haircutTypes} cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3} dataKey="value">
                         {haircutTypes.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "16px",
-                          boxShadow: "0 20px 25px -5px rgb(0 0 0 / 0.1)",
-                        }}
-                        formatter={(value) => [`${value}%`, "Porcentaje"]}
-                      />
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 16 }} formatter={(value: any) => [`${value}%`, "Porcentaje"]} />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="grid grid-cols-1 gap-3 mt-6">
@@ -335,58 +343,57 @@ export function BarberDashboard() {
                     ))}
                   </div>
                 </CardContent>
-              </Card>
+              </GlassCard>
             </div>
 
-            {/* Recent Activity */}
-            <Card className="glass-card border-0 hover-lift">
+            {/* Actividad reciente */}
+            <GlassCard>
               <CardHeader className="pb-4">
                 <CardTitle className="text-xl font-bold text-foreground">Actividad Reciente</CardTitle>
-                <CardDescription className="text-muted-foreground text-base">
-                  Últimos clientes atendidos hoy
-                </CardDescription>
+                <CardDescription className="text-muted-foreground text-base">Últimos clientes atendidos hoy</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentClients.map((client) => (
-                    <div
-                      key={client.id}
-                      className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
-                          <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${client.id}`} />
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {client.name
-                              .split(" ")
-                              .map((n) => n[0])
-                              .join("")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-foreground">{client.name}</p>
-                          <p className="text-sm text-muted-foreground">{client.service}</p>
-                          <p className="text-xs text-muted-foreground">{client.visits} visitas</p>
+                  {(appointments || [])
+                    .filter((a: any) => (a.estado || a.status || "").toUpperCase() === "ATENDIDA")
+                    .slice(0, 5)
+                    .map((a: any) => (
+                      <div key={a.id} className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
+                            <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${a.client_id}`} />
+                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                              {(a.client?.name || "C")
+                                .split(" ")
+                                .map((n: string) => n[0])
+                                .join("")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold text-foreground">{a.client?.name || "Cliente"}</p>
+                            <p className="text-sm text-muted-foreground">{a.service?.name || "Servicio"}</p>
+                            <p className="text-xs text-muted-foreground">{fmtTime(a.fecha_hora)}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-6">
+                          <div className="text-right">
+                            <p className="font-bold text-lg text-foreground">{fmtMoney(a.service?.price)}</p>
+                            <p className="text-sm text-muted-foreground">{a.service?.duration_min || 0} min</p>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                            ))}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-6">
-                        <div className="text-right">
-                          <p className="font-bold text-lg text-foreground">${client.price}</p>
-                          <p className="text-sm text-muted-foreground">{client.time}</p>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          {[...Array(client.rating)].map((_, i) => (
-                            <Star key={i} className="h-4 w-4 fill-primary text-primary" />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </CardContent>
-            </Card>
+            </GlassCard>
           </TabsContent>
 
+          {/* Clientes */}
           <TabsContent value="clients" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
@@ -394,67 +401,61 @@ export function BarberDashboard() {
                 <p className="text-muted-foreground text-base">Administra tu base de clientes</p>
               </div>
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Cliente
+                <Plus className="h-4 w-4 mr-2" /> Nuevo Cliente
               </Button>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                <input
-                  placeholder="Buscar clientes..."
-                  className="w-full pl-10 pr-4 py-3 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                />
+                <input placeholder="Buscar clientes…" className="w-full pl-10 pr-4 py-3 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors" />
               </div>
               <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                <Filter className="h-4 w-4 mr-2" />
-                Filtros
+                <Filter className="h-4 w-4 mr-2" /> Filtros
               </Button>
             </div>
 
-            <Card className="glass-card border-0 hover-lift">
+            <GlassCard>
               <CardContent className="p-0">
                 <div className="divide-y divide-border">
-                  {recentClients.map((client) => (
-                    <div key={client.id} className="p-6 hover:bg-muted/30 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
-                            <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${client.id}`} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                              {client.name
-                                .split(" ")
-                                .map((n) => n[0])
-                                .join("")}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-semibold text-foreground">{client.name}</p>
-                            <p className="text-sm text-muted-foreground">Último servicio: {client.service}</p>
-                            <p className="text-xs text-muted-foreground">{client.visits} visitas totales</p>
+                  {(appointments || [])
+                    .filter((a: any) => !!a.client)
+                    .map((a: any) => (
+                      <div key={a.id} className="p-6 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-4">
+                            <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
+                              <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${a.client_id}`} />
+                              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                                {(a.client?.name || "C")
+                                  .split(" ")
+                                  .map((n: string) => n[0])
+                                  .join("")}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div>
+                              <p className="font-semibold text-foreground">{a.client?.name || "Cliente"}</p>
+                              <p className="text-sm text-muted-foreground">Último servicio: {a.service?.name || "Servicio"}</p>
+                              <p className="text-xs text-muted-foreground">{new Date(a.fecha_hora).toLocaleDateString("es-ES")}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-3">
+                            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                              {a.estado || a.status}
+                            </Badge>
+                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              Ver Perfil
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
-                            Cliente {client.visits > 10 ? "VIP" : "Regular"}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                          >
-                            Ver Perfil
-                          </Button>
-                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </CardContent>
-            </Card>
+            </GlassCard>
           </TabsContent>
 
+          {/* Servicios */}
           <TabsContent value="services" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
@@ -462,131 +463,112 @@ export function BarberDashboard() {
                 <p className="text-muted-foreground text-base">Gestiona tu catálogo de servicios</p>
               </div>
               <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
-                <Plus className="h-4 w-4 mr-2" />
-                Nuevo Servicio
+                <Plus className="h-4 w-4 mr-2" /> Nuevo Servicio
               </Button>
             </div>
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-              {[
-                { name: "Fade Clásico", price: 25, duration: "30 min", popularity: 85, bookings: 87 },
-                { name: "Corte + Barba", price: 35, duration: "45 min", popularity: 70, bookings: 62 },
-                { name: "Buzz Cut", price: 20, duration: "20 min", popularity: 60, bookings: 50 },
-                { name: "Pompadour", price: 30, duration: "40 min", popularity: 45, bookings: 30 },
-                { name: "Corte Tijera", price: 28, duration: "35 min", popularity: 55, bookings: 42 },
-                { name: "Arreglo Barba", price: 15, duration: "20 min", popularity: 40, bookings: 28 },
-              ].map((service, index) => (
-                <Card key={index} className="glass-card border-0 hover-lift group">
-                  <CardHeader className="pb-4">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg font-bold text-foreground">{service.name}</CardTitle>
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold">
-                        ${service.price}
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-muted-foreground text-base">
-                      Duración: {service.duration} • {service.bookings} reservas
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground font-medium">Popularidad</span>
-                        <span className="text-foreground font-semibold">{service.popularity}%</span>
+              {(services || []).map((s: any) => {
+                const bookings = (appointments || []).filter((a: any) => a.service_id === (s.id ?? s.id_service)).length
+                const popularity = Math.max(0, Math.min(100, Math.round(((bookings || 0) / Math.max(1, appointments?.length || 1)) * 100)))
+                return (
+                  <GlassCard key={s.id ?? s.id_service} className="group">
+                    <CardHeader className="pb-4">
+                      <div className="flex justify-between items-start">
+                        <CardTitle className="text-lg font-bold text-foreground">{s.name}</CardTitle>
+                        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold">
+                          {fmtMoney(s.price)}
+                        </Badge>
                       </div>
-                      <Progress value={service.popularity} className="h-2" />
-                    </div>
-                    <div className="flex space-x-2 mt-6">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Editar
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
-                      >
-                        Estadísticas
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                      <CardDescription className="text-muted-foreground text-base">
+                        Duración: {s.duration_min ?? s.duration ?? 0} min • {bookings} reservas
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground font-medium">Popularidad</span>
+                          <span className="text-foreground font-semibold">{popularity}%</span>
+                        </div>
+                        <Progress value={popularity} className="h-2" />
+                      </div>
+                      <div className="flex space-x-2 mt-6">
+                        <Button variant="outline" size="sm" className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift">
+                          <Edit className="h-4 w-4 mr-1" /> Editar
+                        </Button>
+                        <Button variant="outline" size="sm" className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift">
+                          Estadísticas
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </GlassCard>
+                )
+              })}
             </div>
           </TabsContent>
 
+          {/* Citas */}
           <TabsContent value="appointments" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Próximas Citas</h2>
                 <p className="text-muted-foreground text-base">Agenda del día de hoy</p>
               </div>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva Cita
-              </Button>
+              <div className="flex gap-2">
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
+                  <Plus className="h-4 w-4 mr-2" /> Nueva Cita
+                </Button>
+                <Button variant="outline" onClick={() => refetchAppointments?.()}>
+                  <RefreshCcw className="h-4 w-4 mr-2" /> Refrescar
+                </Button>
+              </div>
             </div>
 
-            <Card className="glass-card border-0 hover-lift">
+            <GlassCard>
               <CardHeader className="pb-4">
-                <CardTitle className="text-xl font-bold text-foreground">Hoy - 15 de Junio</CardTitle>
+                <CardTitle className="text-xl font-bold text-foreground">Citas de Hoy</CardTitle>
                 <CardDescription className="text-muted-foreground text-base">
-                  {upcomingAppointments.length} citas programadas
+                  {(appointments || []).filter((a: any) => (a.estado || a.status) !== "CANCELADA").length} citas programadas
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {upcomingAppointments.map((appointment) => (
-                    <div
-                      key={appointment.id}
-                      className="flex items-center justify-between p-5 rounded-xl border border-border bg-muted/10 hover:bg-muted/20 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
-                          <Clock className="h-6 w-6 text-primary" />
+                  {(appointments || [])
+                    .filter((a: any) => (a.estado || a.status) !== "CANCELADA")
+                    .slice(0, 12)
+                    .map((a: any) => (
+                      <div key={a.id} className="flex items-center justify-between p-5 rounded-xl border border-border bg-muted/10 hover:bg-muted/20 transition-colors">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10">
+                            <Clock className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">{a.client?.name || "Cliente"}</p>
+                            <p className="text-sm text-muted-foreground">{a.service?.name || "Servicio"}</p>
+                            <p className="text-xs text-muted-foreground">{a.client?.phone} • {a.service?.duration_min || 0} min</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-foreground">{appointment.name}</p>
-                          <p className="text-sm text-muted-foreground">{appointment.service}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {appointment.phone} • {appointment.duration}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                          <p className="font-bold text-lg text-foreground">{appointment.time}</p>
-                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                            Confirmada
-                          </Badge>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                          >
-                            <Phone className="h-4 w-4 mr-1" />
-                            Llamar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                          >
-                            Reagendar
-                          </Button>
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <p className="font-bold text-lg text-foreground">{fmtTime(a.fecha_hora)}</p>
+                            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                              {a.estado || a.status}
+                            </Badge>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              <Phone className="h-4 w-4 mr-1" /> Llamar
+                            </Button>
+                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              Reagendar
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
                 </div>
               </CardContent>
-            </Card>
+            </GlassCard>
           </TabsContent>
         </Tabs>
       </div>
