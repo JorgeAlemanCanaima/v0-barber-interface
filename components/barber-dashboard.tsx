@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -49,8 +50,9 @@ import {
   AreaChart,
   Area,
 } from "recharts"
+import { useBarbers, useServices, useAppointments } from "@/lib/hooks/useSupabase"
 
-// Datos de ejemplo
+// Datos de ejemplo (mantenidos para gráficos y datos que no están en la BD)
 const earningsData = [
   { name: "Ene", earnings: 4200, clients: 168 },
   { name: "Feb", earnings: 3800, clients: 152 },
@@ -252,6 +254,51 @@ const styleGallery = [
 ]
 
 export function BarberDashboard() {
+  const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
+  const { services, loading: servicesLoading, error: servicesError } = useServices()
+  const { appointments, loading: appointmentsLoading, error: appointmentsError } = useAppointments()
+
+  // Calcular estadísticas en tiempo real
+  const { todayEarnings, todayClients, popularServiceName, averageRating } = useMemo(() => {
+    const attended = (appointments || []).filter((a: any) => (a.estado || a.status || "").toUpperCase() === "ATENDIDA")
+    
+    const earnings = attended.reduce((sum: number, a: any) => sum + (a.service?.price || 0), 0)
+    const clients = attended.length
+    
+    // Servicio más popular
+    const serviceCounts = (services || []).reduce((acc: any, service: any) => {
+      const count = (appointments || []).filter((apt: any) => apt.service_id === service.id).length
+      acc[service.id] = { name: service.name, count }
+      return acc
+    }, {})
+    
+    const popularService = Object.values(serviceCounts).reduce((prev: any, current: any) => 
+      current.count > prev.count ? current : prev, 
+      { name: 'N/A', count: 0 }
+    ) as { name: string, count: number }
+    
+    // Rating promedio (usando valor por defecto ya que no hay campo rating en el esquema)
+    const rating = 4.8
+    
+    return {
+      todayEarnings: earnings,
+      todayClients: clients,
+      popularServiceName: popularService.name,
+      averageRating: rating
+    }
+  }, [appointments, services])
+
+  if (barbersLoading || servicesLoading || appointmentsLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Cargando datos...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <header className="glass-card sticky top-0 z-50 border-b-0">
@@ -308,7 +355,7 @@ export function BarberDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">$245</div>
+              <div className="text-4xl font-bold text-foreground mb-2">${todayEarnings.toFixed(0)}</div>
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
                   <TrendingUp className="h-3 w-3 text-green-600" />
@@ -329,7 +376,7 @@ export function BarberDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">12</div>
+              <div className="text-4xl font-bold text-foreground mb-2">{todayClients}</div>
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30">
                   <TrendingUp className="h-3 w-3 text-blue-600" />
@@ -350,8 +397,8 @@ export function BarberDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">Fade</div>
-              <p className="text-sm text-muted-foreground font-medium">35% de todos los servicios</p>
+              <div className="text-4xl font-bold text-foreground mb-2">{popularServiceName}</div>
+              <p className="text-sm text-muted-foreground font-medium">Servicio más popular</p>
             </CardContent>
           </Card>
 
@@ -366,14 +413,14 @@ export function BarberDashboard() {
             </CardHeader>
             <CardContent>
               <div className="flex items-center space-x-2 mb-2">
-                <div className="text-4xl font-bold text-foreground">4.8</div>
+                <div className="text-4xl font-bold text-foreground">{averageRating.toFixed(1)}</div>
                 <div className="flex">
                   {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="h-5 w-5 fill-yellow-400 text-yellow-400" />
+                    <Star key={i} className={`h-5 w-5 ${i < Math.floor(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
                   ))}
                 </div>
               </div>
-              <p className="text-sm text-muted-foreground font-medium">Promedio de 127 reseñas</p>
+              <p className="text-sm text-muted-foreground font-medium">Promedio de {barbers.length} barberos</p>
             </CardContent>
           </Card>
         </div>
@@ -554,34 +601,42 @@ export function BarberDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentClients.map((client) => (
+                  {appointments
+                    .filter(apt => apt.estado === 'ATENDIDA')
+                    .slice(0, 5)
+                    .map((appointment) => (
                     <div
-                      key={client.id}
+                      key={appointment.id}
                       className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
                     >
                       <div className="flex items-center space-x-4">
                         <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
-                          <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${client.id}`} />
+                          <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${appointment.client_id}`} />
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                            {client.name
-                              .split(" ")
+                            {appointment.client?.name
+                              ?.split(" ")
                               .map((n) => n[0])
-                              .join("")}
+                              .join("") || "C"}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-semibold text-foreground">{client.name}</p>
-                          <p className="text-sm text-muted-foreground">{client.service}</p>
-                          <p className="text-xs text-muted-foreground">{client.visits} visitas</p>
+                          <p className="font-semibold text-foreground">{appointment.client?.name || 'Cliente'}</p>
+                          <p className="text-sm text-muted-foreground">{appointment.service?.name || 'Servicio'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(appointment.fecha_hora).toLocaleTimeString('es-ES', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-6">
                         <div className="text-right">
-                          <p className="font-bold text-lg text-foreground">${client.price}</p>
-                          <p className="text-sm text-muted-foreground">{client.time}</p>
+                          <p className="font-bold text-lg text-foreground">${appointment.service?.price || 0}</p>
+                          <p className="text-sm text-muted-foreground">{appointment.service?.duration_min || 0} min</p>
                         </div>
                         <div className="flex items-center space-x-1">
-                          {[...Array(client.rating)].map((_, i) => (
+                          {[...Array(5)].map((_, i) => (
                             <Star key={i} className="h-4 w-4 fill-primary text-primary" />
                           ))}
                         </div>

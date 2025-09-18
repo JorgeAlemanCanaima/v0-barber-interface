@@ -1,5 +1,7 @@
 "use client"
 
+import { useState } from "react"
+import { useServices, useBarbers } from "@/lib/hooks/useSupabase"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -162,6 +164,28 @@ const styleShowcase = [
 ]
 
 export function ClientView() {
+  const { services, loading: servicesLoading, error: servicesError } = useServices()
+  const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
+
+  if (servicesLoading || barbersLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          <p className="text-muted-foreground">Cargando datos...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (servicesError || barbersError) {
+    return (
+      <div className="flex items-center justify-center min-h-screen text-red-500">
+        <p>Error al cargar datos: {servicesError || barbersError}</p>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Hero Section */}
@@ -301,19 +325,13 @@ export function ClientView() {
               <Card key={service.id} className="glass-card border-0 hover-lift group overflow-hidden">
                 <div className="relative">
                   <img
-                    src={service.image || "/placeholder.svg"}
+                    src="/placeholder.svg"
                     alt={service.name}
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  {service.popular && (
-                    <Badge className="absolute top-4 left-4 gradient-bg text-white border-0 shadow-lg">
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      Popular
-                    </Badge>
-                  )}
                   <div className="absolute top-4 right-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
                     <Clock className="h-3 w-3 text-white" />
-                    <span className="text-xs text-white font-medium">{service.duration}</span>
+                    <span className="text-xs text-white font-medium">{service.duration_min} min</span>
                   </div>
                   <div className="absolute bottom-4 left-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-green-500/90 backdrop-blur-sm">
                     <CheckCircle className="h-3 w-3 text-white" />
@@ -329,7 +347,7 @@ export function ClientView() {
                       ${service.price}
                     </Badge>
                   </div>
-                  <CardDescription className="text-muted-foreground text-base">{service.description}</CardDescription>
+                  <CardDescription className="text-muted-foreground text-base">Servicio profesional de barbería</CardDescription>
                   <div className="flex items-center space-x-4 mt-3 text-sm text-muted-foreground">
                     <div className="flex items-center space-x-1">
                       <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
