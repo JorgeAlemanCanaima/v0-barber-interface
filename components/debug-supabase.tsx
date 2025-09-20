@@ -25,7 +25,7 @@ export default function DebugSupabase() {
         // Test 2: Verificar cada tabla en el esquema public
         const tables = [
           { name: 'role', description: 'Roles del sistema' },
-          { name: 'user', description: 'Usuarios y barberos' },
+          { name: 'users', description: 'Usuarios y barberos' },
           { name: 'client', description: 'Clientes de la barbería' },
           { name: 'service', description: 'Servicios ofrecidos' },
           { name: 'cita', description: 'Citas programadas' },

@@ -40,6 +40,7 @@ import {
   CheckCircle,
   Clock,
   Mail,
+  Bug,
 } from "lucide-react"
 import {
   PieChart,
@@ -56,6 +57,27 @@ import {
 import { useBarbers, useServices, useAppointments, useStats, useTodayAppointments, useAllAppointments, useChartData, useClients, useAppointmentStatuses } from "@/lib/hooks/useSupabase"
 
 // Todos los datos ahora vienen de la base de datos
+
+// Estilos CSS personalizados para efectos burbuja
+const bubbleStyles = `
+  @keyframes bubble-float {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-2px) scale(1.1); }
+  }
+  
+  @keyframes bubble-pulse {
+    0%, 100% { opacity: 0.3; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.2); }
+  }
+  
+  .bubble-effect {
+    animation: bubble-float 2s ease-in-out infinite;
+  }
+  
+  .bubble-pulse {
+    animation: bubble-pulse 1.5s ease-in-out infinite;
+  }
+`
 
 // Definición de estados de citas
 const APPOINTMENT_STATUS = {
@@ -154,8 +176,9 @@ export function BarberDashboard() {
     
     const attendedToday = (appointments || []).filter((a: any) => {
       const aptDate = new Date(a.fecha_hora)
-      const status = getAppointmentStatus(a.estado)
-      return status.code === APPOINTMENT_STATUS.ATENDIDA.code && aptDate >= today && aptDate < tomorrow
+      // Usar status de la relación de la BD si existe, sino fallback a estado legacy
+      const statusCode = a.status?.code !== undefined ? a.status.code : getAppointmentStatus(a.estado, statuses).code
+      return statusCode === APPOINTMENT_STATUS.ATENDIDA.code && aptDate >= today && aptDate < tomorrow
     })
     
     const earnings = attendedToday.reduce((sum: number, a: any) => sum + (a.service?.price || 0), 0)
@@ -164,8 +187,8 @@ export function BarberDashboard() {
     // Servicio más popular basado en citas atendidas
     const serviceCounts = (services || []).map((service: any) => {
       const count = (appointments || []).filter((apt: any) => {
-        const status = getAppointmentStatus(apt.estado)
-        return apt.service_id === service.id && status.code === APPOINTMENT_STATUS.ATENDIDA.code
+        const statusCode = apt.status?.code !== undefined ? apt.status.code : getAppointmentStatus(apt.estado, statuses).code
+        return apt.service_id === service.id && statusCode === APPOINTMENT_STATUS.ATENDIDA.code
       }).length
       return { name: service.name, count }
     })
@@ -175,10 +198,15 @@ export function BarberDashboard() {
       { name: 'Sin datos', count: 0 }
     )
     
+    // Si no hay servicios populares, mostrar el primer servicio disponible
+    const finalPopularService = popularService.count > 0 ? popularService : 
+      services.length > 0 ? { name: services[0].name, count: 0 } : 
+      { name: 'Sin servicios', count: 0 }
+    
     // Calcular rating promedio basado en citas completadas (simulado)
     const completedAppointments = (appointments || []).filter((a: any) => {
-      const status = getAppointmentStatus(a.estado)
-      return status.code === APPOINTMENT_STATUS.ATENDIDA.code
+      const statusCode = a.status?.code !== undefined ? a.status.code : getAppointmentStatus(a.estado, statuses).code
+      return statusCode === APPOINTMENT_STATUS.ATENDIDA.code
     })
     const rating = completedAppointments.length > 0 ? 4.2 + (Math.random() * 0.6) : 0
     
@@ -192,7 +220,7 @@ export function BarberDashboard() {
     return {
       todayEarnings: earnings,
       todayClients: clients,
-      popularServiceName: popularService.name,
+      popularServiceName: finalPopularService.name,
       averageRating: rating,
       totalBarbers: barbers.length,
       pendingAppointments,
@@ -215,7 +243,9 @@ export function BarberDashboard() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+    <>
+      <style dangerouslySetInnerHTML={{ __html: bubbleStyles }} />
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       <header className="glass-card sticky top-0 z-50 border-b-0">
         <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
@@ -229,34 +259,107 @@ export function BarberDashboard() {
                 </div>
                 <div>
                   <h1 className="text-3xl font-bold text-foreground tracking-tight">BarberPro</h1>
-                  <p className="text-sm text-muted-foreground font-medium">Panel Administrativo</p>
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
+                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs text-green-600 font-medium">En línea</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent relative">
+            <div className="flex items-center space-x-3">
+              {/* Notificaciones con contador dinámico */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="glass-card border-0 hover-lift bg-transparent relative"
+                onClick={() => {
+                  // Scroll a la pestaña de notificaciones
+                  const notificationsTab = document.querySelector('[data-state="notifications"]') as HTMLElement
+                  if (notificationsTab) {
+                    notificationsTab.click()
+                  }
+                }}
+              >
                 <Bell className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Notificaciones</span>
                 <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">2</span>
+                  <span className="text-xs text-white font-bold">
+                    {pendingAppointments + cancelledAppointments}
+                  </span>
                 </div>
               </Button>
-              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent">
+
+              {/* Botón de configuración funcional */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="glass-card border-0 hover-lift bg-transparent"
+                onClick={() => {
+                  // Scroll a la pestaña de servicios (configuración)
+                  const servicesTab = document.querySelector('[data-state="services"]') as HTMLElement
+                  if (servicesTab) {
+                    servicesTab.click()
+                  }
+                }}
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Configuración</span>
               </Button>
-              <div className="hidden md:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
+
+              {/* Botón de debug (solo en desarrollo) */}
+              {process.env.NODE_ENV === 'development' && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="glass-card border-0 hover-lift bg-transparent"
+                  onClick={() => {
+                    window.open('/debug', '_blank')
+                  }}
+                >
+                  <Bug className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Debug</span>
+                </Button>
+              )}
+
+              {/* Información del sistema */}
+              <div className="hidden lg:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-xs font-medium text-muted-foreground">Sistema Activo</span>
+                </div>
+                <div className="w-px h-4 bg-border"></div>
                 <Calendar className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">{new Date().toLocaleDateString('es-ES', { 
-                  day: 'numeric', 
-                  month: 'long', 
-                  year: 'numeric' 
-                })}</span>
+                <span className="text-sm font-semibold text-foreground">
+                  {new Date().toLocaleDateString('es-ES', { 
+                    day: 'numeric', 
+                    month: 'short', 
+                    year: 'numeric' 
+                  })}
+                </span>
               </div>
-              <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
-                <AvatarImage src="/barber-shop.png" />
-                <AvatarFallback className="gradient-bg text-white font-bold text-lg">JD</AvatarFallback>
-              </Avatar>
+
+              {/* Avatar con información del usuario */}
+              <div className="flex items-center space-x-3">
+                <div className="hidden md:block text-right">
+                  <p className="text-sm font-semibold text-foreground">
+                    {barbers.length > 0 ? barbers[0]?.full_name || 'Administrador' : 'Administrador'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {barbers.length > 0 ? barbers[0]?.role?.name || 'Admin' : 'Admin'}
+                  </p>
+                </div>
+                <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
+                  <AvatarImage src="/barber-shop.png" />
+                  <AvatarFallback className="gradient-bg text-white font-bold text-lg">
+                    {barbers.length > 0 ? 
+                      (barbers[0]?.full_name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2) : 
+                      'AD'
+                    }
+                  </AvatarFallback>
+                </Avatar>
+              </div>
             </div>
           </div>
         </div>
@@ -295,13 +398,13 @@ export function BarberDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">{clients.length}</div>
+              <div className="text-4xl font-bold text-foreground mb-2">{attendedAppointments}</div>
               <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30">
-                  <TrendingUp className="h-3 w-3 text-blue-600" />
-                  <span className="text-xs font-bold text-blue-600">Total</span>
+                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
+                  <TrendingUp className="h-3 w-3 text-green-600" />
+                  <span className="text-xs font-bold text-green-600">Atendidos</span>
                 </div>
-                <p className="text-sm text-muted-foreground">clientes registrados</p>
+                <p className="text-sm text-muted-foreground">citas completadas</p>
               </div>
             </CardContent>
           </Card>
@@ -309,35 +412,30 @@ export function BarberDashboard() {
           <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Servicio Popular
+                Clientes Registrados
               </CardTitle>
               <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Sparkles className="h-6 w-6 text-white" />
+                <Users className="h-6 w-6 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-foreground mb-2">{clients.length}</div>
+              <p className="text-sm text-muted-foreground font-medium">clientes registrados</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-0 hover-lift group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                Servicios Activos
+              </CardTitle>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <Scissors className="h-6 w-6 text-white" />
               </div>
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-foreground mb-2">{services.length}</div>
-              <p className="text-sm text-muted-foreground font-medium">servicios activos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Satisfacción
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Award className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2 mb-2">
-                <div className="text-4xl font-bold text-foreground">{appointments.length}</div>
-                <div className="flex">
-                  <Calendar className="h-5 w-5 text-blue-400" />
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground font-medium">Total de citas programadas</p>
+              <p className="text-sm text-muted-foreground font-medium">servicios disponibles</p>
             </CardContent>
           </Card>
         </div>
@@ -409,49 +507,62 @@ export function BarberDashboard() {
           <TabsList className="grid w-full grid-cols-7 glass-card p-2 h-14 rounded-2xl border-0">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               Resumen
             </TabsTrigger>
             <TabsTrigger
               value="clients"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
             >
               <Users className="h-4 w-4 mr-2" />
               Clientes
             </TabsTrigger>
             <TabsTrigger
               value="services"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative overflow-hidden group"
             >
-              <Scissors className="h-4 w-4 mr-2" />
-              Servicios
+              <Scissors className="h-4 w-4 mr-2 relative z-20" />
+              <span className="relative z-20">Servicios</span>
+              
+              {/* Efecto burbuja múltiple - más transparente y solo en hover */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/8 via-purple-400/8 to-pink-400/8 rounded-xl opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 transition-opacity duration-500 z-10"></div>
+              
+              {/* Burbujas individuales - más transparentes y solo en hover */}
+              <div className="absolute top-2 left-4 w-2 h-2 bg-white/15 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-effect transition-all duration-300 delay-100 z-10"></div>
+              <div className="absolute top-3 right-6 w-1.5 h-1.5 bg-white/20 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-pulse transition-all duration-300 delay-200 z-10"></div>
+              <div className="absolute bottom-3 left-6 w-1 h-1 bg-white/25 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-effect transition-all duration-300 delay-300 z-10"></div>
+              <div className="absolute bottom-2 right-4 w-2.5 h-2.5 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-pulse transition-all duration-300 delay-400 z-10"></div>
+              
+              {/* Efecto de ondas - más transparentes y solo en hover */}
+              <div className="absolute inset-0 bg-white/3 rounded-xl scale-0 group-hover:scale-110 data-[state=active]:scale-0 transition-transform duration-500 origin-center z-5"></div>
+              <div className="absolute inset-0 bg-white/2 rounded-xl scale-0 group-hover:scale-125 data-[state=active]:scale-0 transition-transform duration-700 origin-center delay-100 z-5"></div>
             </TabsTrigger>
             <TabsTrigger
               value="appointments"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
             >
               <Calendar className="h-4 w-4 mr-2" />
               Citas
             </TabsTrigger>
             <TabsTrigger
               value="inventory"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
             >
               <Package className="h-4 w-4 mr-2" />
               Inventario
             </TabsTrigger>
             <TabsTrigger
               value="gallery"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
             >
               <Camera className="h-4 w-4 mr-2" />
               Galería
             </TabsTrigger>
             <TabsTrigger
               value="notifications"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift relative"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative"
             >
               <Bell className="h-4 w-4 mr-2" />
               Alertas
@@ -1208,6 +1319,7 @@ export function BarberDashboard() {
         </Tabs>
       </div>
     </div>
+    </>
   )
 }
 

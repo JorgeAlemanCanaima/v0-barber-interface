@@ -24,9 +24,9 @@ export function useBarbers() {
 
       if (error) throw error
       
-      // Filtrar solo usuarios con rol de barbero
+      // Filtrar usuarios activos (todos los usuarios que no sean solo admin)
       const barberUsers = data?.filter(user => 
-        user.role?.name?.toLowerCase() === 'barbero' || user.role?.name?.toLowerCase() === 'barber'
+        user.is_active === true && user.role?.name?.toLowerCase() !== 'admin'
       ) || []
       
       setBarbers(barberUsers)
