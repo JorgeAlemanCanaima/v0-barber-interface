@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { supabase, User, Service, Cita, Client, Role } from '../supabase'
+import { supabase, User, Service, Cita, Client, Role, AppointmentStatus } from '../supabase'
 
 // Hook para obtener barberos (usuarios con rol 'barbero')
 export function useBarbers() {
@@ -94,7 +94,8 @@ export function useAppointments(date?: string) {
           *,
           client:client_id(id, name, email, phone),
           service:service_id(id, name, price, duration_min),
-          barber:barber_user_id(id, full_name, phone)
+          barber:barber_user_id(id, full_name, phone),
+          status:status_id(id, code, name, color, description)
         `)
         .order('fecha_hora', { ascending: true })
 
@@ -202,6 +203,38 @@ export function useRoles() {
   }
 
   return { roles, loading, error, refetch: fetchRoles }
+}
+
+// Hook para obtener estados de citas
+export function useAppointmentStatuses() {
+  const [statuses, setStatuses] = useState<AppointmentStatus[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchStatuses()
+  }, [])
+
+  const fetchStatuses = async () => {
+    try {
+      setLoading(true)
+      
+      const { data, error } = await supabase
+        .from('appointment_status')
+        .select('*')
+        .eq('is_active', true)
+        .order('code')
+
+      if (error) throw error
+      setStatuses(data || [])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al cargar estados')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return { statuses, loading, error, refetch: fetchStatuses }
 }
 
 // Hook para obtener estadísticas generales

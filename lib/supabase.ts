@@ -45,17 +45,30 @@ export interface Service {
   created_at: string
 }
 
+export interface AppointmentStatus {
+  id: number
+  code: number
+  name: string
+  description?: string
+  color: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Cita {
   id: number
   client_id: number
   service_id: number
   barber_user_id?: number
   fecha_hora: string
-  estado: 'PENDIENTE' | 'CONFIRMADA' | 'CANCELADA' | 'ATENDIDA'
+  estado: 'PENDIENTE' | 'CONFIRMADA' | 'CANCELADA' | 'ATENDIDA' // Legacy field
+  status_id: number // Nueva referencia a appointment_status
   created_at: string
   client?: Client
   service?: Service
   barber?: User
+  status?: AppointmentStatus // Relación con la tabla de estados
 }
 
 export interface CashRegister {
