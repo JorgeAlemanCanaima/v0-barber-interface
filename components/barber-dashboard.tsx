@@ -245,21 +245,22 @@ export function BarberDashboard() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: bubbleStyles }} />
-      <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <header className="glass-card sticky top-0 z-50 border-b-0">
-        <div className="container mx-auto px-6 py-6">
+        <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+          <header className="glass-card sticky top-0 z-50 border-b-0 mobile-header">
+            <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2 sm:space-x-6">
+              <div className="flex items-center space-x-2 sm:space-x-4">
                 <div className="relative">
-                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl gradient-bg shadow-lg">
-                    <Scissors className="h-7 w-7 text-white" />
+                  <div className="flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 rounded-2xl gradient-bg shadow-lg">
+                    <Scissors className="h-5 w-5 sm:h-7 sm:w-7 text-white" />
                   </div>
-                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                  <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
                 </div>
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground tracking-tight">BarberPro</h1>
+                  <h1 className="text-xl sm:text-3xl font-bold text-foreground tracking-tight">BarberPro</h1>
                   <div className="flex items-center space-x-2">
+                    <p className="text-xs sm:text-sm text-muted-foreground font-medium hidden sm:block">Panel Administrativo</p>
                     <div className="flex items-center space-x-1">
                       <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
                       <span className="text-xs text-green-600 font-medium">En línea</span>
@@ -268,12 +269,12 @@ export function BarberDashboard() {
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1 sm:space-x-3">
               {/* Notificaciones con contador dinámico */}
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="glass-card border-0 hover-lift bg-transparent relative"
+                className="glass-card border-0 hover-lift bg-transparent relative mobile-btn"
                 onClick={() => {
                   // Scroll a la pestaña de notificaciones
                   const notificationsTab = document.querySelector('[data-state="notifications"]') as HTMLElement
@@ -282,9 +283,9 @@ export function BarberDashboard() {
                   }
                 }}
               >
-                <Bell className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Notificaciones</span>
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                <Bell className="h-4 w-4 sm:mr-2" />
+                <span className="hidden lg:inline">Notificaciones</span>
+                <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 rounded-full flex items-center justify-center">
                   <span className="text-xs text-white font-bold">
                     {pendingAppointments + cancelledAppointments}
                   </span>
@@ -295,7 +296,7 @@ export function BarberDashboard() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="glass-card border-0 hover-lift bg-transparent"
+                className="glass-card border-0 hover-lift bg-transparent mobile-btn"
                 onClick={() => {
                   // Scroll a la pestaña de servicios (configuración)
                   const servicesTab = document.querySelector('[data-state="services"]') as HTMLElement
@@ -304,8 +305,8 @@ export function BarberDashboard() {
                   }
                 }}
               >
-                <Settings className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Configuración</span>
+                <Settings className="h-4 w-4 sm:mr-2" />
+                <span className="hidden lg:inline">Configuración</span>
               </Button>
 
               {/* Botón de debug (solo en desarrollo) */}
@@ -313,13 +314,13 @@ export function BarberDashboard() {
                 <Button 
                   variant="outline" 
                   size="sm" 
-                  className="glass-card border-0 hover-lift bg-transparent"
+                  className="glass-card border-0 hover-lift bg-transparent mobile-btn"
                   onClick={() => {
                     window.open('/debug', '_blank')
                   }}
                 >
-                  <Bug className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Debug</span>
+                  <Bug className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden lg:inline">Debug</span>
                 </Button>
               )}
 
@@ -365,8 +366,8 @@ export function BarberDashboard() {
         </div>
       </header>
 
-      <div className="flex-1 container mx-auto px-6 py-8">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 animate-fade-in">
+            <div className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-8 mobile-content">
+        <div className="grid gap-4 sm:gap-6 mobile-grid-2 lg:grid-cols-4 mb-8 animate-fade-in">
           <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
@@ -441,7 +442,7 @@ export function BarberDashboard() {
         </div>
 
         {/* Estadísticas adicionales */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 animate-fade-in">
+        <div className="grid gap-4 sm:gap-6 mobile-grid-2 lg:grid-cols-4 mb-8 animate-fade-in">
           <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
@@ -503,28 +504,28 @@ export function BarberDashboard() {
           </Card>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-8 animate-slide-up">
-          <TabsList className="grid w-full grid-cols-7 glass-card p-2 h-14 rounded-2xl border-0">
+        <Tabs defaultValue="overview" className="space-y-4 sm:space-y-8 animate-slide-up">
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 glass-card p-1 sm:p-2 h-12 sm:h-14 rounded-xl sm:rounded-2xl border-0 mobile-nav">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg mobile-tab"
             >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Resumen
+              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Resumen</span>
             </TabsTrigger>
             <TabsTrigger
               value="clients"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg mobile-tab"
             >
-              <Users className="h-4 w-4 mr-2" />
-              Clientes
+              <Users className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Clientes</span>
             </TabsTrigger>
             <TabsTrigger
               value="services"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative overflow-hidden group"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative overflow-hidden group mobile-tab"
             >
-              <Scissors className="h-4 w-4 mr-2 relative z-20" />
-              <span className="relative z-20">Servicios</span>
+              <Scissors className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2 relative z-20" />
+              <span className="relative z-20 hidden sm:inline">Servicios</span>
               
               {/* Efecto burbuja múltiple - más transparente y solo en hover */}
               <div className="absolute inset-0 bg-gradient-to-r from-blue-400/8 via-purple-400/8 to-pink-400/8 rounded-xl opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 transition-opacity duration-500 z-10"></div>
@@ -562,16 +563,16 @@ export function BarberDashboard() {
             </TabsTrigger>
             <TabsTrigger
               value="notifications"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative mobile-tab"
             >
-              <Bell className="h-4 w-4 mr-2" />
-              Alertas
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+              <Bell className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Alertas</span>
+              <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-8">
-            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
+          <TabsContent value="overview" className="space-y-4 sm:space-y-8 mobile-content">
+            <div className="grid gap-4 sm:gap-8 mobile-grid-1 sm:mobile-grid-2 lg:grid-cols-7">
               <Card className="col-span-4 glass-card border-0 hover-lift">
                 <CardHeader className="pb-6">
                   <CardTitle className="text-2xl font-bold text-foreground flex items-center">

@@ -47,11 +47,17 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="BarberPro" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/barber-shop.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/barber-shop.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/barber-shop.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/barber-shop.png" />
       </head>
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable}`}>
-        {children}
+      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} min-h-screen safe-area-top safe-area-bottom`}>
+        <div className="min-h-screen flex flex-col">
+          {children}
+        </div>
         <Analytics />
       </body>
     </html>
