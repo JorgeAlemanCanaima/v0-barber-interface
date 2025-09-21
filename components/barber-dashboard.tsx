@@ -11,6 +11,7 @@ import {
   Users,
   Scissors,
   Calendar,
+  Clock,
   Star,
   Plus,
   Search,
@@ -37,10 +38,6 @@ import {
   UserCheck,
   Zap,
   Heart,
-  CheckCircle,
-  Clock,
-  Mail,
-  Bug,
 } from "lucide-react"
 import {
   PieChart,
@@ -54,184 +51,245 @@ import {
   AreaChart,
   Area,
 } from "recharts"
-import { useBarbers, useServices, useAppointments, useStats, useTodayAppointments, useAllAppointments, useChartData, useClients, useAppointmentStatuses } from "@/lib/hooks/useSupabase"
+import { useBarbers, useServices, useAppointments } from "@/lib/hooks/useSupabase"
 
-// Todos los datos ahora vienen de la base de datos
+// Datos de ejemplo (mantenidos para gráficos y datos que no están en la BD)
+const earningsData = [
+  { name: "Ene", earnings: 4200, clients: 168 },
+  { name: "Feb", earnings: 3800, clients: 152 },
+  { name: "Mar", earnings: 5100, clients: 204 },
+  { name: "Abr", earnings: 4600, clients: 184 },
+  { name: "May", earnings: 5800, clients: 232 },
+  { name: "Jun", earnings: 6200, clients: 248 },
+]
 
-// Estilos CSS personalizados para efectos burbuja
-const bubbleStyles = `
-  @keyframes bubble-float {
-    0%, 100% { transform: translateY(0px) scale(1); }
-    50% { transform: translateY(-2px) scale(1.1); }
-  }
-  
-  @keyframes bubble-pulse {
-    0%, 100% { opacity: 0.3; transform: scale(1); }
-    50% { opacity: 0.8; transform: scale(1.2); }
-  }
-  
-  .bubble-effect {
-    animation: bubble-float 2s ease-in-out infinite;
-  }
-  
-  .bubble-pulse {
-    animation: bubble-pulse 1.5s ease-in-out infinite;
-  }
-`
+const haircutTypes = [
+  { name: "Fade Clásico", value: 35, color: "hsl(var(--chart-1))", count: 87 },
+  { name: "Corte Tijera", value: 25, color: "hsl(var(--chart-2))", count: 62 },
+  { name: "Buzz Cut", value: 20, color: "hsl(var(--chart-3))", count: 50 },
+  { name: "Pompadour", value: 12, color: "hsl(var(--chart-4))", count: 30 },
+  { name: "Otros", value: 8, color: "hsl(var(--chart-5))", count: 20 },
+]
 
-// Definición de estados de citas
-const APPOINTMENT_STATUS = {
-  PENDIENTE: { code: 0, label: 'Pendiente', color: 'yellow', bgColor: 'bg-yellow-100', textColor: 'text-yellow-800', borderColor: 'border-yellow-200' },
-  CONFIRMADA: { code: 1, label: 'Confirmada', color: 'blue', bgColor: 'bg-blue-100', textColor: 'text-blue-800', borderColor: 'border-blue-200' },
-  ATENDIDA: { code: 2, label: 'Atendida', color: 'green', bgColor: 'bg-green-100', textColor: 'text-green-800', borderColor: 'border-green-200' },
-  CANCELADA: { code: 3, label: 'Cancelada', color: 'red', bgColor: 'bg-red-100', textColor: 'text-red-800', borderColor: 'border-red-200' },
-  NO_SHOW: { code: 4, label: 'No se presentó', color: 'gray', bgColor: 'bg-gray-100', textColor: 'text-gray-800', borderColor: 'border-gray-200' }
-} as const
+const recentClients = [
+  { id: 1, name: "Carlos Mendoza", service: "Fade Clásico", time: "10:30", price: 25, rating: 5, visits: 12 },
+  { id: 2, name: "Miguel Torres", service: "Corte + Barba", time: "11:15", price: 35, rating: 5, visits: 8 },
+  { id: 3, name: "Juan Pérez", service: "Buzz Cut", time: "12:00", price: 20, rating: 4, visits: 15 },
+  { id: 4, name: "Roberto Silva", service: "Pompadour", time: "14:30", price: 30, rating: 5, visits: 6 },
+  { id: 5, name: "Diego Ramírez", service: "Fade + Barba", time: "15:45", price: 40, rating: 5, visits: 9 },
+]
 
-// Función para obtener el estado de una cita (usando datos de la base de datos)
-const getAppointmentStatus = (status: string | number | any, statuses: any[] = []) => {
-  // Si viene con objeto status de la relación
-  if (status && typeof status === 'object' && status.code !== undefined) {
-    return {
-      code: status.code,
-      label: status.name,
-      color: status.color,
-      bgColor: `bg-${status.color}-100`,
-      textColor: `text-${status.color}-800`,
-      borderColor: `border-${status.color}-200`
-    }
-  }
-  
-  // Si es número, buscar en la base de datos
-  if (typeof status === 'number') {
-    const dbStatus = statuses.find(s => s.code === status)
-    if (dbStatus) {
-      return {
-        code: dbStatus.code,
-        label: dbStatus.name,
-        color: dbStatus.color,
-        bgColor: `bg-${dbStatus.color}-100`,
-        textColor: `text-${dbStatus.color}-800`,
-        borderColor: `border-${dbStatus.color}-200`
-      }
-    }
-  }
-  
-  // Fallback a constantes locales
-  if (typeof status === 'number') {
-    return Object.values(APPOINTMENT_STATUS).find(s => s.code === status) || APPOINTMENT_STATUS.PENDIENTE
-  }
-  
-  // Si es string, buscar por label
-  const statusUpper = status.toUpperCase()
-  return Object.values(APPOINTMENT_STATUS).find(s => s.label.toUpperCase() === statusUpper) || APPOINTMENT_STATUS.PENDIENTE
-}
+const upcomingAppointments = [
+  { id: 1, name: "Luis García", service: "Fade Clásico", time: "16:00", phone: "+1234567890", duration: "30 min" },
+  { id: 2, name: "Pedro Martín", service: "Corte Tijera", time: "16:30", phone: "+1234567891", duration: "35 min" },
+  { id: 3, name: "Antonio López", service: "Buzz Cut", time: "17:00", phone: "+1234567892", duration: "20 min" },
+]
 
-// Función para contar citas por estado (usando datos de la base de datos)
-const countAppointmentsByStatus = (appointments: any[], statusCode: number, statuses: any[] = []) => {
-  return appointments.filter(apt => {
-    // Priorizar status de la relación de la base de datos
-    if (apt.status && apt.status.code !== undefined) {
-      return apt.status.code === statusCode
-    }
-    
-    // Fallback a estado legacy
-    const aptStatus = typeof apt.estado === 'number' ? apt.estado : getAppointmentStatus(apt.estado, statuses).code
-    return aptStatus === statusCode
-  }).length
-}
+const inventoryData = [
+  { id: 1, name: "Shampoo Premium", category: "Cuidado", stock: 12, minStock: 5, price: 25, status: "ok" },
+  { id: 2, name: "Cera para Cabello", category: "Styling", stock: 3, minStock: 8, price: 18, status: "low" },
+  { id: 3, name: "Aceite para Barba", category: "Barba", stock: 8, minStock: 5, price: 22, status: "ok" },
+  {
+    id: 4,
+    name: "Tijeras Profesionales",
+    category: "Herramientas",
+    stock: 2,
+    minStock: 3,
+    price: 120,
+    status: "critical",
+  },
+  { id: 5, name: "Máquina Clipper", category: "Herramientas", stock: 4, minStock: 2, price: 180, status: "ok" },
+  { id: 6, name: "Toallas Premium", category: "Accesorios", stock: 15, minStock: 10, price: 12, status: "ok" },
+]
 
+const clientHistory = [
+  {
+    id: 1,
+    clientName: "Carlos Mendoza",
+    visits: [
+      {
+        date: "2024-06-10",
+        service: "Fade Clásico",
+        price: 25,
+        rating: 5,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=fade-result-1",
+      },
+      {
+        date: "2024-05-15",
+        service: "Corte + Barba",
+        price: 35,
+        rating: 5,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=fade-result-2",
+      },
+      {
+        date: "2024-04-20",
+        service: "Fade Clásico",
+        price: 25,
+        rating: 4,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=fade-result-3",
+      },
+    ],
+    preferences: "Le gusta el fade bajo, sin barba muy corta",
+    allergies: "Ninguna",
+    totalSpent: 285,
+    loyaltyPoints: 28,
+  },
+  {
+    id: 2,
+    clientName: "Miguel Torres",
+    visits: [
+      {
+        date: "2024-06-12",
+        service: "Pompadour",
+        price: 30,
+        rating: 5,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=pompadour-result-1",
+      },
+      {
+        date: "2024-05-28",
+        service: "Corte Tijera",
+        price: 28,
+        rating: 4,
+        photo: "/placeholder-3491y.png?height=100&width=100&query=pompadour-result-2",
+      },
+    ],
+    preferences: "Prefiere cortes con volumen, usa productos naturales",
+    allergies: "Alérgico a productos con alcohol",
+    totalSpent: 158,
+    loyaltyPoints: 15,
+  },
+]
 
+const notifications = [
+  {
+    id: 1,
+    type: "appointment",
+    title: "Cita en 30 minutos",
+    message: "Luis García - Fade Clásico",
+    time: "hace 5 min",
+    urgent: true,
+  },
+  {
+    id: 2,
+    type: "inventory",
+    title: "Stock bajo",
+    message: "Cera para Cabello - Solo quedan 3 unidades",
+    time: "hace 1 hora",
+    urgent: true,
+  },
+  {
+    id: 3,
+    type: "review",
+    title: "Nueva reseña",
+    message: "Carlos Mendoza dejó una reseña de 5 estrellas",
+    time: "hace 2 horas",
+    urgent: false,
+  },
+  {
+    id: 4,
+    type: "payment",
+    title: "Pago recibido",
+    message: "Pago de $35 - Miguel Torres",
+    time: "hace 3 horas",
+    urgent: false,
+  },
+  {
+    id: 5,
+    type: "birthday",
+    title: "Cumpleaños cliente",
+    message: "Juan Pérez cumple años mañana",
+    time: "hace 4 horas",
+    urgent: false,
+  },
+]
 
+const styleGallery = [
+  {
+    id: 1,
+    name: "Fade Moderno",
+    category: "Fade",
+    image: "/placeholder-3491y.png?height=200&width=200&query=modern-fade",
+    likes: 45,
+    trending: true,
+  },
+  {
+    id: 2,
+    name: "Pompadour Clásico",
+    category: "Clásico",
+    image: "/placeholder-3491y.png?height=200&width=200&query=classic-pompadour",
+    likes: 32,
+    trending: false,
+  },
+  {
+    id: 3,
+    name: "Undercut Texturizado",
+    category: "Moderno",
+    image: "/placeholder-3491y.png?height=200&width=200&query=textured-undercut",
+    likes: 28,
+    trending: true,
+  },
+  {
+    id: 4,
+    name: "Buzz Cut Militar",
+    category: "Corto",
+    image: "/placeholder-3491y.png?height=200&width=200&query=military-buzz",
+    likes: 19,
+    trending: false,
+  },
+  {
+    id: 5,
+    name: "Quiff Elegante",
+    category: "Elegante",
+    image: "/placeholder-3491y.png?height=200&width=200&query=elegant-quiff",
+    likes: 37,
+    trending: true,
+  },
+  {
+    id: 6,
+    name: "Fade con Diseño",
+    category: "Artístico",
+    image: "/placeholder-3491y.png?height=200&width=200&query=design-fade",
+    likes: 52,
+    trending: true,
+  },
+]
 
 export function BarberDashboard() {
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
   const { services, loading: servicesLoading, error: servicesError } = useServices()
   const { appointments, loading: appointmentsLoading, error: appointmentsError } = useAppointments()
-  const { stats, loading: statsLoading, error: statsError } = useStats()
-  const { appointments: todayAppointments, loading: todayLoading, error: todayError } = useTodayAppointments()
-  const { appointments: allAppointments, loading: allLoading, error: allError } = useAllAppointments()
-  const { earningsData, haircutTypes } = useChartData()
-  const { clients } = useClients()
-  const { statuses, loading: statusesLoading, error: statusesError } = useAppointmentStatuses()
 
-  // Calcular estadísticas en tiempo real basadas en datos de la base de datos
-  const { 
-    todayEarnings, 
-    todayClients, 
-    popularServiceName, 
-    averageRating, 
-    totalBarbers,
-    pendingAppointments,
-    confirmedAppointments,
-    attendedAppointments,
-    cancelledAppointments,
-    noShowAppointments
-  } = useMemo(() => {
-    // Citas atendidas hoy
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+  // Calcular estadísticas en tiempo real
+  const { todayEarnings, todayClients, popularServiceName, averageRating } = useMemo(() => {
+    const attended = (appointments || []).filter((a: any) => (a.estado || a.status || "").toUpperCase() === "ATENDIDA")
     
-    const attendedToday = (appointments || []).filter((a: any) => {
-      const aptDate = new Date(a.fecha_hora)
-      // Usar status de la relación de la BD si existe, sino fallback a estado legacy
-      const statusCode = a.status?.code !== undefined ? a.status.code : getAppointmentStatus(a.estado, statuses).code
-      return statusCode === APPOINTMENT_STATUS.ATENDIDA.code && aptDate >= today && aptDate < tomorrow
-    })
+    const earnings = attended.reduce((sum: number, a: any) => sum + (a.service?.price || 0), 0)
+    const clients = attended.length
     
-    const earnings = attendedToday.reduce((sum: number, a: any) => sum + (a.service?.price || 0), 0)
-    const clients = attendedToday.length
+    // Servicio más popular
+    const serviceCounts = (services || []).reduce((acc: any, service: any) => {
+      const count = (appointments || []).filter((apt: any) => apt.service_id === service.id).length
+      acc[service.id] = { name: service.name, count }
+      return acc
+    }, {})
     
-    // Servicio más popular basado en citas atendidas
-    const serviceCounts = (services || []).map((service: any) => {
-      const count = (appointments || []).filter((apt: any) => {
-        const statusCode = apt.status?.code !== undefined ? apt.status.code : getAppointmentStatus(apt.estado, statuses).code
-        return apt.service_id === service.id && statusCode === APPOINTMENT_STATUS.ATENDIDA.code
-      }).length
-      return { name: service.name, count }
-    })
-    
-    const popularService = serviceCounts.reduce((prev: any, current: any) => 
+    const popularService = Object.values(serviceCounts).reduce((prev: any, current: any) => 
       current.count > prev.count ? current : prev, 
-      { name: 'Sin datos', count: 0 }
-    )
+      { name: 'N/A', count: 0 }
+    ) as { name: string, count: number }
     
-    // Si no hay servicios populares, mostrar el primer servicio disponible
-    const finalPopularService = popularService.count > 0 ? popularService : 
-      services.length > 0 ? { name: services[0].name, count: 0 } : 
-      { name: 'Sin servicios', count: 0 }
-    
-    // Calcular rating promedio basado en citas completadas (simulado)
-    const completedAppointments = (appointments || []).filter((a: any) => {
-      const statusCode = a.status?.code !== undefined ? a.status.code : getAppointmentStatus(a.estado, statuses).code
-      return statusCode === APPOINTMENT_STATUS.ATENDIDA.code
-    })
-    const rating = completedAppointments.length > 0 ? 4.2 + (Math.random() * 0.6) : 0
-    
-    // Contar citas por estado usando datos de la base de datos
-    const pendingAppointments = countAppointmentsByStatus(appointments || [], APPOINTMENT_STATUS.PENDIENTE.code, statuses)
-    const confirmedAppointments = countAppointmentsByStatus(appointments || [], APPOINTMENT_STATUS.CONFIRMADA.code, statuses)
-    const attendedAppointments = countAppointmentsByStatus(appointments || [], APPOINTMENT_STATUS.ATENDIDA.code, statuses)
-    const cancelledAppointments = countAppointmentsByStatus(appointments || [], APPOINTMENT_STATUS.CANCELADA.code, statuses)
-    const noShowAppointments = countAppointmentsByStatus(appointments || [], APPOINTMENT_STATUS.NO_SHOW.code, statuses)
+    // Rating promedio (usando valor por defecto ya que no hay campo rating en el esquema)
+    const rating = 4.8
     
     return {
       todayEarnings: earnings,
       todayClients: clients,
-      popularServiceName: finalPopularService.name,
-      averageRating: rating,
-      totalBarbers: barbers.length,
-      pendingAppointments,
-      confirmedAppointments,
-      attendedAppointments,
-      cancelledAppointments,
-      noShowAppointments
+      popularServiceName: popularService.name,
+      averageRating: rating
     }
-  }, [appointments, services, barbers, statuses])
+  }, [appointments, services])
 
-  if (barbersLoading || servicesLoading || appointmentsLoading || statsLoading || todayLoading) {
+  if (barbersLoading || servicesLoading || appointmentsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center space-y-4">
@@ -243,131 +301,51 @@ export function BarberDashboard() {
   }
 
   return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: bubbleStyles }} />
-        <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-          <header className="glass-card sticky top-0 z-50 border-b-0 mobile-header">
-            <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
+      <header className="glass-card sticky top-0 z-50 border-b-0">
+        <div className="container mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 sm:space-x-6">
-              <div className="flex items-center space-x-2 sm:space-x-4">
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-4">
                 <div className="relative">
-                  <div className="flex items-center justify-center w-10 h-10 sm:w-14 sm:h-14 rounded-2xl gradient-bg shadow-lg">
-                    <Scissors className="h-5 w-5 sm:h-7 sm:w-7 text-white" />
+                  <div className="flex items-center justify-center w-14 h-14 rounded-2xl gradient-bg shadow-lg">
+                    <Scissors className="h-7 w-7 text-white" />
                   </div>
-                  <div className="absolute -top-1 -right-1 w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
+                  <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
                 </div>
                 <div>
-                  <h1 className="text-xl sm:text-3xl font-bold text-foreground tracking-tight">BarberPro</h1>
-                  <div className="flex items-center space-x-2">
-                    <p className="text-xs sm:text-sm text-muted-foreground font-medium hidden sm:block">Panel Administrativo</p>
-                    <div className="flex items-center space-x-1">
-                      <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-green-600 font-medium">En línea</span>
-                    </div>
-                  </div>
+                  <h1 className="text-3xl font-bold text-foreground tracking-tight">BarberPro</h1>
+                  <p className="text-sm text-muted-foreground font-medium">Panel Administrativo</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center space-x-1 sm:space-x-3">
-              {/* Notificaciones con contador dinámico */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="glass-card border-0 hover-lift bg-transparent relative mobile-btn"
-                onClick={() => {
-                  // Scroll a la pestaña de notificaciones
-                  const notificationsTab = document.querySelector('[data-state="notifications"]') as HTMLElement
-                  if (notificationsTab) {
-                    notificationsTab.click()
-                  }
-                }}
-              >
-                <Bell className="h-4 w-4 sm:mr-2" />
-                <span className="hidden lg:inline">Notificaciones</span>
-                <div className="absolute -top-1 -right-1 w-4 h-4 sm:w-5 sm:h-5 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">
-                    {pendingAppointments + cancelledAppointments}
-                  </span>
+            <div className="flex items-center space-x-4">
+              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent relative">
+                <Bell className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Notificaciones</span>
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
+                  <span className="text-xs text-white font-bold">2</span>
                 </div>
               </Button>
-
-              {/* Botón de configuración funcional */}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="glass-card border-0 hover-lift bg-transparent mobile-btn"
-                onClick={() => {
-                  // Scroll a la pestaña de servicios (configuración)
-                  const servicesTab = document.querySelector('[data-state="services"]') as HTMLElement
-                  if (servicesTab) {
-                    servicesTab.click()
-                  }
-                }}
-              >
-                <Settings className="h-4 w-4 sm:mr-2" />
-                <span className="hidden lg:inline">Configuración</span>
+              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent">
+                <Settings className="h-4 w-4 mr-2" />
+                <span className="hidden sm:inline">Configuración</span>
               </Button>
-
-              {/* Botón de debug (solo en desarrollo) */}
-              {process.env.NODE_ENV === 'development' && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="glass-card border-0 hover-lift bg-transparent mobile-btn"
-                  onClick={() => {
-                    window.open('/debug', '_blank')
-                  }}
-                >
-                  <Bug className="h-4 w-4 sm:mr-2" />
-                  <span className="hidden lg:inline">Debug</span>
-                </Button>
-              )}
-
-              {/* Información del sistema */}
-              <div className="hidden lg:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-medium text-muted-foreground">Sistema Activo</span>
-                </div>
-                <div className="w-px h-4 bg-border"></div>
+              <div className="hidden md:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
                 <Calendar className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">
-                  {new Date().toLocaleDateString('es-ES', { 
-                    day: 'numeric', 
-                    month: 'short', 
-                    year: 'numeric' 
-                  })}
-                </span>
+                <span className="text-sm font-semibold text-foreground">15 Junio 2024</span>
               </div>
-
-              {/* Avatar con información del usuario */}
-              <div className="flex items-center space-x-3">
-                <div className="hidden md:block text-right">
-                  <p className="text-sm font-semibold text-foreground">
-                    {barbers.length > 0 ? barbers[0]?.full_name || 'Administrador' : 'Administrador'}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {barbers.length > 0 ? barbers[0]?.role?.name || 'Admin' : 'Admin'}
-                  </p>
-                </div>
-                <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
-                  <AvatarImage src="/barber-shop.png" />
-                  <AvatarFallback className="gradient-bg text-white font-bold text-lg">
-                    {barbers.length > 0 ? 
-                      (barbers[0]?.full_name || 'A').split(' ').map(n => n[0]).join('').slice(0, 2) : 
-                      'AD'
-                    }
-                  </AvatarFallback>
-                </Avatar>
-              </div>
+              <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
+                <AvatarImage src="/barber-shop.png" />
+                <AvatarFallback className="gradient-bg text-white font-bold text-lg">JD</AvatarFallback>
+              </Avatar>
             </div>
           </div>
         </div>
       </header>
 
-            <div className="flex-1 container mx-auto px-4 sm:px-6 py-4 sm:py-8 mobile-content">
-        <div className="grid gap-4 sm:gap-6 mobile-grid-2 lg:grid-cols-4 mb-8 animate-fade-in">
+      <div className="flex-1 container mx-auto px-6 py-8">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8 animate-fade-in">
           <Card className="glass-card border-0 hover-lift group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
               <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
@@ -382,9 +360,9 @@ export function BarberDashboard() {
               <div className="flex items-center space-x-2">
                 <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
                   <TrendingUp className="h-3 w-3 text-green-600" />
-                  <span className="text-xs font-bold text-green-600">Hoy</span>
+                  <span className="text-xs font-bold text-green-600">+12%</span>
                 </div>
-                <p className="text-sm text-muted-foreground">{todayClients} citas atendidas</p>
+                <p className="text-sm text-muted-foreground">vs ayer</p>
               </div>
             </CardContent>
           </Card>
@@ -399,92 +377,14 @@ export function BarberDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">{attendedAppointments}</div>
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30">
-                  <TrendingUp className="h-3 w-3 text-green-600" />
-                  <span className="text-xs font-bold text-green-600">Atendidos</span>
-                </div>
-                <p className="text-sm text-muted-foreground">citas completadas</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Clientes Registrados
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">{clients.length}</div>
-              <p className="text-sm text-muted-foreground font-medium">clientes registrados</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Servicios Activos
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Scissors className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">{services.length}</div>
-              <p className="text-sm text-muted-foreground font-medium">servicios disponibles</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Estadísticas adicionales */}
-        <div className="grid gap-4 sm:gap-6 mobile-grid-2 lg:grid-cols-4 mb-8 animate-fade-in">
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Total Usuarios
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Users className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">{totalBarbers}</div>
-              <p className="text-sm text-muted-foreground font-medium">barberos activos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Ingresos Totales
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <DollarSign className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-4xl font-bold text-foreground mb-2">${stats.totalRevenue.toFixed(0)}</div>
-              <p className="text-sm text-muted-foreground font-medium">ingresos históricos</p>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-0 hover-lift group">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
-                Citas Hoy
-              </CardTitle>
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
-                <Calendar className="h-6 w-6 text-white" />
-              </div>
-            </CardHeader>
-            <CardContent>
               <div className="text-4xl font-bold text-foreground mb-2">{todayClients}</div>
-              <p className="text-sm text-muted-foreground font-medium">citas atendidas hoy</p>
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1 px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <TrendingUp className="h-3 w-3 text-blue-600" />
+                  <span className="text-xs font-bold text-blue-600">+3</span>
+                </div>
+                <p className="text-sm text-muted-foreground">vs ayer</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -499,80 +399,89 @@ export function BarberDashboard() {
             </CardHeader>
             <CardContent>
               <div className="text-4xl font-bold text-foreground mb-2">{popularServiceName}</div>
-              <p className="text-sm text-muted-foreground font-medium">más solicitado</p>
+              <p className="text-sm text-muted-foreground font-medium">Servicio más popular</p>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-0 hover-lift group">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+              <CardTitle className="text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                Satisfacción
+              </CardTitle>
+              <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg group-hover:scale-110 transition-transform">
+                <Award className="h-6 w-6 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="text-4xl font-bold text-foreground">{averageRating.toFixed(1)}</div>
+                <div className="flex">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`h-5 w-5 ${i < Math.floor(averageRating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`} />
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Promedio de {barbers.length} barberos</p>
             </CardContent>
           </Card>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-4 sm:space-y-8 animate-slide-up">
-          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 glass-card p-1 sm:p-2 h-12 sm:h-14 rounded-xl sm:rounded-2xl border-0 mobile-nav">
+        <Tabs defaultValue="overview" className="space-y-8 animate-slide-up">
+          <TabsList className="grid w-full grid-cols-7 glass-card p-2 h-14 rounded-2xl border-0">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg mobile-tab"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
-              <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Resumen</span>
+              <BarChart3 className="h-4 w-4 mr-2" />
+              Resumen
             </TabsTrigger>
             <TabsTrigger
               value="clients"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg mobile-tab"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
-              <Users className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Clientes</span>
+              <Users className="h-4 w-4 mr-2" />
+              Clientes
             </TabsTrigger>
             <TabsTrigger
               value="services"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative overflow-hidden group mobile-tab"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
-              <Scissors className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2 relative z-20" />
-              <span className="relative z-20 hidden sm:inline">Servicios</span>
-              
-              {/* Efecto burbuja múltiple - más transparente y solo en hover */}
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-400/8 via-purple-400/8 to-pink-400/8 rounded-xl opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 transition-opacity duration-500 z-10"></div>
-              
-              {/* Burbujas individuales - más transparentes y solo en hover */}
-              <div className="absolute top-2 left-4 w-2 h-2 bg-white/15 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-effect transition-all duration-300 delay-100 z-10"></div>
-              <div className="absolute top-3 right-6 w-1.5 h-1.5 bg-white/20 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-pulse transition-all duration-300 delay-200 z-10"></div>
-              <div className="absolute bottom-3 left-6 w-1 h-1 bg-white/25 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-effect transition-all duration-300 delay-300 z-10"></div>
-              <div className="absolute bottom-2 right-4 w-2.5 h-2.5 bg-white/10 rounded-full opacity-0 group-hover:opacity-100 data-[state=active]:opacity-0 group-hover:bubble-pulse transition-all duration-300 delay-400 z-10"></div>
-              
-              {/* Efecto de ondas - más transparentes y solo en hover */}
-              <div className="absolute inset-0 bg-white/3 rounded-xl scale-0 group-hover:scale-110 data-[state=active]:scale-0 transition-transform duration-500 origin-center z-5"></div>
-              <div className="absolute inset-0 bg-white/2 rounded-xl scale-0 group-hover:scale-125 data-[state=active]:scale-0 transition-transform duration-700 origin-center delay-100 z-5"></div>
+              <Scissors className="h-4 w-4 mr-2" />
+              Servicios
             </TabsTrigger>
             <TabsTrigger
               value="appointments"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
               <Calendar className="h-4 w-4 mr-2" />
               Citas
             </TabsTrigger>
             <TabsTrigger
               value="inventory"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
               <Package className="h-4 w-4 mr-2" />
               Inventario
             </TabsTrigger>
             <TabsTrigger
               value="gallery"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold data-[state=active]:drop-shadow-lg"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
               <Camera className="h-4 w-4 mr-2" />
               Galería
             </TabsTrigger>
             <TabsTrigger
               value="notifications"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all duration-300 hover:scale-105 hover:shadow-xl hover:bg-white/10 text-black hover:text-black data-[state=active]:text-white data-[state=active]:font-extrabold relative mobile-tab"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift relative"
             >
-              <Bell className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Alertas</span>
-              <div className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
+              <Bell className="h-4 w-4 mr-2" />
+              Alertas
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-4 sm:space-y-8 mobile-content">
-            <div className="grid gap-4 sm:gap-8 mobile-grid-1 sm:mobile-grid-2 lg:grid-cols-7">
+          <TabsContent value="overview" className="space-y-8">
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-7">
               <Card className="col-span-4 glass-card border-0 hover-lift">
                 <CardHeader className="pb-6">
                   <CardTitle className="text-2xl font-bold text-foreground flex items-center">
@@ -693,125 +602,48 @@ export function BarberDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {todayAppointments.length > 0 ? (
-                    todayAppointments.slice(0, 5).map((appointment) => (
-                      <div
-                        key={appointment.id}
-                        className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${appointment.client?.name || 'Cliente'}`} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                              {appointment.client?.name
-                                ?.split(" ")
-                                .map((n) => n[0])
-                                .join("") || "C"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-semibold text-foreground">{appointment.client?.name || 'Cliente'}</p>
-                            <p className="text-sm text-muted-foreground">{appointment.service?.name || 'Servicio'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(appointment.fecha_hora).toLocaleTimeString('es-ES', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })} • {appointment.barber?.full_name || 'Barbero'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-6">
-                          <div className="text-right">
-                            <p className="font-bold text-lg text-foreground">${appointment.service?.price || 0}</p>
-                            <p className="text-sm text-muted-foreground">{appointment.service?.duration_min || 0} min</p>
-                          </div>
-                          <Badge 
-                            variant="outline" 
-                            className={`${getAppointmentStatus(appointment.status || appointment.estado, statuses).bgColor} ${getAppointmentStatus(appointment.status || appointment.estado, statuses).textColor} ${getAppointmentStatus(appointment.status || appointment.estado, statuses).borderColor} dark:bg-opacity-30 dark:border-opacity-80`}
-                          >
-                            {getAppointmentStatus(appointment.status || appointment.estado, statuses).label}
-                          </Badge>
+                  {appointments
+                    .filter(apt => apt.estado === 'ATENDIDA')
+                    .slice(0, 5)
+                    .map((appointment) => (
+                    <div
+                      key={appointment.id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
+                          <AvatarImage src={`/placeholder-3491y.png?height=48&width=48&query=client-${appointment.client_id}`} />
+                          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                            {appointment.client?.name
+                              ?.split(" ")
+                              .map((n) => n[0])
+                              .join("") || "C"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-foreground">{appointment.client?.name || 'Cliente'}</p>
+                          <p className="text-sm text-muted-foreground">{appointment.service?.name || 'Servicio'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(appointment.fecha_hora).toLocaleTimeString('es-ES', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                          </p>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mx-auto mb-4">
-                        <Calendar className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <p className="text-muted-foreground text-lg font-medium">No hay citas atendidas</p>
-                      <p className="text-muted-foreground text-sm">Las citas con estado "ATENDIDA" aparecerán aquí</p>
-                      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p className="text-sm text-blue-600 dark:text-blue-400">
-                          💡 <strong>Tip:</strong> Para ver citas aquí, asegúrate de que tengan estado "ATENDIDA" en la base de datos
-                        </p>
+                      <div className="flex items-center space-x-6">
+                        <div className="text-right">
+                          <p className="font-bold text-lg text-foreground">${appointment.service?.price || 0}</p>
+                          <p className="text-sm text-muted-foreground">{appointment.service?.duration_min || 0} min</p>
+                        </div>
+                        <div className="flex items-center space-x-1">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} className="h-4 w-4 fill-primary text-primary" />
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Debug: Todas las citas */}
-            <Card className="glass-card border-0 hover-lift">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-xl font-bold text-foreground">Debug: Todas las Citas</CardTitle>
-                <CardDescription className="text-muted-foreground text-base">
-                  Últimas 10 citas en la base de datos (para verificar estados)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {allAppointments.length > 0 ? (
-                    allAppointments.map((appointment) => (
-                      <div
-                        key={appointment.id}
-                        className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <Avatar className="h-12 w-12 ring-2 ring-primary/10 hover-lift cursor-pointer">
-                            <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${appointment.client?.name || 'Cliente'}`} />
-                            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                              {appointment.client?.name
-                                ?.split(" ")
-                                .map((n) => n[0])
-                                .join("") || "C"}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div>
-                            <p className="font-semibold text-foreground">{appointment.client?.name || 'Cliente'}</p>
-                            <p className="text-sm text-muted-foreground">{appointment.service?.name || 'Servicio'}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(appointment.fecha_hora).toLocaleDateString('es-ES')} {new Date(appointment.fecha_hora).toLocaleTimeString('es-ES', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })} • {appointment.barber?.full_name || 'Barbero'}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-6">
-                          <div className="text-right">
-                            <p className="font-bold text-lg text-foreground">${appointment.service?.price || 0}</p>
-                            <p className="text-sm text-muted-foreground">{appointment.service?.duration_min || 0} min</p>
-                          </div>
-                          <Badge 
-                            variant="outline" 
-                            className={`${getAppointmentStatus(appointment.status || appointment.estado, statuses).bgColor} ${getAppointmentStatus(appointment.status || appointment.estado, statuses).textColor} ${getAppointmentStatus(appointment.status || appointment.estado, statuses).borderColor} dark:bg-opacity-30 dark:border-opacity-80`}
-                          >
-                            {getAppointmentStatus(appointment.status || appointment.estado, statuses).label}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mx-auto mb-4">
-                        <Calendar className="h-8 w-8 text-muted-foreground" />
-                      </div>
-                      <p className="text-muted-foreground text-lg font-medium">No hay citas en la base de datos</p>
-                      <p className="text-muted-foreground text-sm">Agrega algunas citas para verlas aquí</p>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -835,16 +667,27 @@ export function BarberDashboard() {
               </div>
             </div>
 
-            {/* Estadísticas de servicios */}
+            {/* Alertas de stock */}
             <div className="grid gap-4 md:grid-cols-3">
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-blue-500">
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-red-500">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Servicios Activos</p>
-                      <p className="text-2xl font-bold text-blue-600">{services.length}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Stock Crítico</p>
+                      <p className="text-2xl font-bold text-red-600">1</p>
                     </div>
-                    <Scissors className="h-8 w-8 text-blue-500" />
+                    <AlertTriangle className="h-8 w-8 text-red-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-yellow-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Stock Bajo</p>
+                      <p className="text-2xl font-bold text-yellow-600">1</p>
+                    </div>
+                    <Package className="h-8 w-8 text-yellow-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -852,23 +695,10 @@ export function BarberDashboard() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Servicio Popular</p>
-                      <p className="text-lg font-bold text-green-600">{popularServiceName}</p>
+                      <p className="text-sm font-medium text-muted-foreground">Valor Total</p>
+                      <p className="text-2xl font-bold text-green-600">$1,247</p>
                     </div>
-                    <Sparkles className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-purple-500">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Precio Promedio</p>
-                      <p className="text-2xl font-bold text-purple-600">
-                        ${services.length > 0 ? (services.reduce((sum, s) => sum + s.price, 0) / services.length).toFixed(0) : '0'}
-                      </p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-purple-500" />
+                    <DollarSign className="h-8 w-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -877,69 +707,63 @@ export function BarberDashboard() {
             {/* Lista de productos */}
             <Card className="glass-card border-0 hover-lift">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-foreground">Servicios Disponibles</CardTitle>
-                <CardDescription>Gestiona tus servicios de barbería</CardDescription>
+                <CardTitle className="text-xl font-bold text-foreground">Productos en Stock</CardTitle>
+                <CardDescription>Gestiona tu inventario de productos y herramientas</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {services.length > 0 ? (
-                    services.map((service) => (
-                      <div
-                        key={service.id}
-                        className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div
-                            className={`w-3 h-3 rounded-full ${
-                              service.is_active ? "bg-green-500" : "bg-red-500"
-                            }`}
-                          ></div>
-                          <div>
-                            <p className="font-semibold text-foreground">{service.name}</p>
-                            <p className="text-sm text-muted-foreground">Servicio de Barbería</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-6">
-                          <div className="text-center">
-                            <p className="text-sm text-muted-foreground">Precio</p>
-                            <p className="font-bold text-foreground">${service.price}</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-muted-foreground">Duración</p>
-                            <p className="font-bold text-foreground">{service.duration_min} min</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm text-muted-foreground">Estado</p>
-                            <p className="font-bold text-foreground">{service.is_active ? "Activo" : "Inactivo"}</p>
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                  {inventoryData.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            item.status === "critical"
+                              ? "bg-red-500"
+                              : item.status === "low"
+                                ? "bg-yellow-500"
+                                : "bg-green-500"
+                          }`}
+                        ></div>
+                        <div>
+                          <p className="font-semibold text-foreground">{item.name}</p>
+                          <p className="text-sm text-muted-foreground">{item.category}</p>
                         </div>
                       </div>
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-muted/50 mx-auto mb-4">
-                        <Scissors className="h-8 w-8 text-muted-foreground" />
+                      <div className="flex items-center space-x-6">
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">Stock</p>
+                          <p className="font-bold text-foreground">{item.stock}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">Mín.</p>
+                          <p className="font-bold text-foreground">{item.minStock}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm text-muted-foreground">Precio</p>
+                          <p className="font-bold text-foreground">${item.price}</p>
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <p className="text-muted-foreground text-lg font-medium">No hay servicios disponibles</p>
-                      <p className="text-muted-foreground text-sm">Agrega servicios para verlos aquí</p>
                     </div>
-                  )}
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -983,21 +807,23 @@ export function BarberDashboard() {
 
             {/* Galería de estilos */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {services.length > 0 ? services.map((service) => (
-                <Card key={service.id} className="glass-card border-0 hover-lift group overflow-hidden">
+              {styleGallery.map((style) => (
+                <Card key={style.id} className="glass-card border-0 hover-lift group overflow-hidden">
                   <div className="relative">
                     <img
-                      src="/placeholder.svg"
-                      alt={service.name}
+                      src={style.image || "/placeholder.svg"}
+                      alt={style.name}
                       className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <Badge className="absolute top-4 left-4 gradient-bg text-white border-0 shadow-lg">
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Disponible
-                    </Badge>
+                    {style.trending && (
+                      <Badge className="absolute top-4 left-4 gradient-bg text-white border-0 shadow-lg">
+                        <Zap className="h-3 w-3 mr-1" />
+                        Trending
+                      </Badge>
+                    )}
                     <div className="absolute top-4 right-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
-                      <Clock className="h-3 w-3 text-white" />
-                      <span className="text-xs text-white font-medium">{service.duration_min} min</span>
+                      <Heart className="h-3 w-3 text-white" />
+                      <span className="text-xs text-white font-medium">{style.likes}</span>
                     </div>
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <div className="flex space-x-2">
@@ -1022,24 +848,14 @@ export function BarberDashboard() {
                   </div>
                   <CardHeader className="pb-4">
                     <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg font-bold text-foreground">{service.name}</CardTitle>
+                      <CardTitle className="text-lg font-bold text-foreground">{style.name}</CardTitle>
                       <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                        ${service.price}
+                        {style.category}
                       </Badge>
                     </div>
                   </CardHeader>
                 </Card>
-              )) : (
-                <div className="col-span-full text-center py-12">
-                  <div className="flex items-center justify-center w-20 h-20 rounded-full bg-muted/50 mx-auto mb-6">
-                    <Scissors className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-3">Galería de Servicios</h3>
-                  <p className="text-muted-foreground text-lg">
-                    Los servicios aparecerán aquí cuando los agregues
-                  </p>
-                </div>
-              )}
+              ))}
             </div>
           </TabsContent>
 
@@ -1055,65 +871,49 @@ export function BarberDashboard() {
               </Button>
             </div>
 
-            {/* Resumen de estados de citas */}
-            <div className="grid gap-4 md:grid-cols-5">
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-yellow-500">
+            {/* Resumen de notificaciones */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className="glass-card border-0 hover-lift">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Pendientes</p>
-                      <p className="text-2xl font-bold text-yellow-600">{pendingAppointments}</p>
-                      <p className="text-xs text-muted-foreground">Estado: 0</p>
-                    </div>
-                    <AlertTriangle className="h-8 w-8 text-yellow-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-blue-500">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Confirmadas</p>
-                      <p className="text-2xl font-bold text-blue-600">{confirmedAppointments}</p>
-                      <p className="text-xs text-muted-foreground">Estado: 1</p>
-                    </div>
-                    <Calendar className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-green-500">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Atendidas</p>
-                      <p className="text-2xl font-bold text-green-600">{attendedAppointments}</p>
-                      <p className="text-xs text-muted-foreground">Estado: 2</p>
-                    </div>
-                    <CheckCircle className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-red-500">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Canceladas</p>
-                      <p className="text-2xl font-bold text-red-600">{cancelledAppointments}</p>
-                      <p className="text-xs text-muted-foreground">Estado: 3</p>
+                      <p className="text-sm font-medium text-muted-foreground">Urgentes</p>
+                      <p className="text-2xl font-bold text-red-600">2</p>
                     </div>
                     <AlertTriangle className="h-8 w-8 text-red-500" />
                   </div>
                 </CardContent>
               </Card>
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-gray-500">
+              <Card className="glass-card border-0 hover-lift">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">No se presentó</p>
-                      <p className="text-2xl font-bold text-gray-600">{noShowAppointments}</p>
-                      <p className="text-xs text-muted-foreground">Estado: 4</p>
+                      <p className="text-sm font-medium text-muted-foreground">Citas Hoy</p>
+                      <p className="text-2xl font-bold text-blue-600">3</p>
                     </div>
-                    <Clock className="h-8 w-8 text-gray-500" />
+                    <Calendar className="h-8 w-8 text-blue-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Reseñas</p>
+                      <p className="text-2xl font-bold text-green-600">1</p>
+                    </div>
+                    <Star className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Cumpleaños</p>
+                      <p className="text-2xl font-bold text-purple-600">1</p>
+                    </div>
+                    <Gift className="h-8 w-8 text-purple-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -1127,36 +927,214 @@ export function BarberDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="text-center py-12">
-                    <div className="flex items-center justify-center w-20 h-20 rounded-full bg-muted/50 mx-auto mb-6">
-                      <Bell className="h-10 w-10 text-muted-foreground" />
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`flex items-center justify-between p-4 rounded-xl transition-colors ${
+                        notification.urgent
+                          ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                          : "bg-muted/20 hover:bg-muted/40"
+                      }`}
+                    >
+                      <div className="flex items-center space-x-4">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            notification.type === "appointment"
+                              ? "bg-blue-100 dark:bg-blue-900/30"
+                              : notification.type === "inventory"
+                                ? "bg-yellow-100 dark:bg-yellow-900/30"
+                                : notification.type === "review"
+                                  ? "bg-green-100 dark:bg-green-900/30"
+                                  : notification.type === "payment"
+                                    ? "bg-emerald-100 dark:bg-emerald-900/30"
+                                    : "bg-purple-100 dark:bg-purple-900/30"
+                          }`}
+                        >
+                          {notification.type === "appointment" && <Calendar className="h-5 w-5 text-blue-600" />}
+                          {notification.type === "inventory" && <Package className="h-5 w-5 text-yellow-600" />}
+                          {notification.type === "review" && <Star className="h-5 w-5 text-green-600" />}
+                          {notification.type === "payment" && <CreditCard className="h-5 w-5 text-emerald-600" />}
+                          {notification.type === "birthday" && <Gift className="h-5 w-5 text-purple-600" />}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">{notification.title}</p>
+                          <p className="text-sm text-muted-foreground">{notification.message}</p>
+                          <p className="text-xs text-muted-foreground">{notification.time}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {notification.urgent && (
+                          <Badge variant="destructive" className="bg-red-500 text-white">
+                            Urgente
+                          </Badge>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
-                    <h3 className="text-xl font-bold text-foreground mb-3">Sistema de Notificaciones</h3>
-                    <p className="text-muted-foreground text-lg mb-4">
-                      Las notificaciones aparecerán aquí cuando tengas:
-                    </p>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-                      <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
-                        <Calendar className="h-5 w-5 text-blue-600" />
-                        <span className="text-sm">Citas próximas</span>
-                      </div>
-                      <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
-                        <Star className="h-5 w-5 text-green-600" />
-                        <span className="text-sm">Nuevas reseñas</span>
-                      </div>
-                      <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
-                        <DollarSign className="h-5 w-5 text-purple-600" />
-                        <span className="text-sm">Pagos recibidos</span>
-                      </div>
-                      <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/30">
-                        <Users className="h-5 w-5 text-pink-600" />
-                        <span className="text-sm">Nuevos clientes</span>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="appointments" className="space-y-8">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">Gestión de Citas</h2>
+                <p className="text-muted-foreground text-base">Visualiza y administra todas las citas reservadas</p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exportar
+                </Button>
+                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nueva Cita
+                </Button>
+              </div>
+            </div>
+
+            {/* Filtros y búsqueda */}
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    placeholder="Buscar por nombre, teléfono o servicio..."
+                    className="w-full pl-10 pr-4 py-3 border border-border rounded-xl bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <select className="px-3 py-2 rounded-xl border border-border bg-background text-foreground focus:border-primary focus:outline-none">
+                  <option value="all">Todos los estados</option>
+                  <option value="PENDIENTE">Pendientes</option>
+                  <option value="CONFIRMADA">Confirmadas</option>
+                  <option value="CANCELADA">Canceladas</option>
+                  <option value="ATENDIDA">Atendidas</option>
+                </select>
+                <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                  <Filter className="h-4 w-4 mr-2" />
+                  Filtros
+                </Button>
+              </div>
+            </div>
+
+            {/* Lista de citas */}
+            <div className="space-y-4">
+              {appointments && appointments.length > 0 ? (
+                appointments.map((appointment) => {
+                  const appointmentDate = new Date(appointment.fecha_hora)
+                  const date = appointmentDate.toLocaleDateString('es-ES', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })
+                  const time = appointmentDate.toLocaleTimeString('es-ES', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                  })
+                  
+                  const getStatusBadge = (status: string) => {
+                    switch (status) {
+                      case 'PENDIENTE':
+                        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300"><Calendar className="h-3 w-3 mr-1" />Pendiente</Badge>
+                      case 'CONFIRMADA':
+                        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-300"><Star className="h-3 w-3 mr-1" />Confirmada</Badge>
+                      case 'CANCELADA':
+                        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-300"><AlertTriangle className="h-3 w-3 mr-1" />Cancelada</Badge>
+                      case 'ATENDIDA':
+                        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300"><Star className="h-3 w-3 mr-1" />Atendida</Badge>
+                      default:
+                        return <Badge variant="outline">{status}</Badge>
+                    }
+                  }
+
+                  return (
+                    <Card key={appointment.id} className="glass-card border-0 hover-lift">
+                      <CardContent className="p-6">
+                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <Avatar className="h-12 w-12 ring-2 ring-primary/20">
+                                <AvatarImage src="/placeholder-user.jpg" />
+                                <AvatarFallback className="gradient-bg text-white font-bold">
+                                  {appointment.client?.name?.split(' ').map(n => n[0]).join('') || 'C'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <h3 className="font-bold text-lg text-foreground">
+                                  {appointment.client?.name || 'Cliente'}
+                                </h3>
+                                <p className="text-muted-foreground text-sm">
+                                  {appointment.client?.phone || 'Sin teléfono'}
+                                </p>
+                              </div>
+                              {getStatusBadge(appointment.estado)}
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4 text-primary" />
+                                <span className="text-muted-foreground">Fecha:</span>
+                                <span className="font-medium">{date}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-primary" />
+                                <span className="text-muted-foreground">Hora:</span>
+                                <span className="font-medium">{time}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Scissors className="h-4 w-4 text-primary" />
+                                <span className="text-muted-foreground">Servicio:</span>
+                                <span className="font-medium">{appointment.service?.name || 'Servicio'}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col items-end gap-2">
+                            <div className="text-right">
+                              <p className="text-2xl font-bold text-primary">
+                                ${appointment.service?.price || 0}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {appointment.service?.duration_min || 30} min
+                              </p>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )
+                })
+              ) : (
+                <Card className="glass-card border-0 text-center py-12">
+                  <CardContent>
+                    <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-foreground mb-2">No hay citas</h3>
+                    <p className="text-muted-foreground">
+                      No hay citas reservadas en este momento
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
           </TabsContent>
 
           <TabsContent value="clients" className="space-y-8">
@@ -1187,7 +1165,7 @@ export function BarberDashboard() {
 
             {/* Historial detallado de clientes */}
             <div className="space-y-6">
-              {clients.length > 0 ? clients.map((client: any) => (
+              {clientHistory.map((client) => (
                 <Card key={client.id} className="glass-card border-0 hover-lift">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -1195,29 +1173,27 @@ export function BarberDashboard() {
                         <Avatar className="h-16 w-16 ring-2 ring-primary/10">
                           <AvatarImage src={`/placeholder-3491y.png?height=64&width=64&query=client-${client.id}`} />
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
-                            {client.name
+                            {client.clientName
                               .split(" ")
-                              .map((n: any) => n[0])
+                              .map((n) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <h3 className="text-xl font-bold text-foreground">{client.name}</h3>
+                          <h3 className="text-xl font-bold text-foreground">{client.clientName}</h3>
                           <p className="text-sm text-muted-foreground">
-                            Cliente registrado • {client.email || 'Sin email'}
+                            {client.visits.length} visitas • ${client.totalSpent} gastado
                           </p>
                           <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                              Cliente Activo
+                              {client.loyaltyPoints} puntos
                             </Badge>
-                            {client.phone && (
-                              <Badge
-                                variant="outline"
-                                className="bg-green-100 dark:bg-green-900/30 text-green-600 border-green-200 dark:border-green-800"
-                              >
-                                Con Teléfono
-                              </Badge>
-                            )}
+                            <Badge
+                              variant="outline"
+                              className="bg-green-100 dark:bg-green-900/30 text-green-600 border-green-200 dark:border-green-800"
+                            >
+                              Cliente VIP
+                            </Badge>
                           </div>
                         </div>
                       </div>
@@ -1232,54 +1208,39 @@ export function BarberDashboard() {
                       <div>
                         <h4 className="font-semibold text-foreground mb-3">Últimas Visitas</h4>
                         <div className="space-y-3">
-                          {/* Información del cliente */}
-                          <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-                            <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                              <Users className="h-6 w-6 text-primary" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="font-medium text-foreground">Cliente</p>
-                              <p className="text-sm text-muted-foreground">{client.name}</p>
-                            </div>
-                          </div>
-                          {client.email && (
-                            <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-                              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Mail className="h-6 w-6 text-primary" />
-                              </div>
+                          {client.visits.slice(0, 3).map((visit, index) => (
+                            <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
+                              <img
+                                src={visit.photo || "/placeholder.svg"}
+                                alt={`Resultado ${visit.service}`}
+                                className="w-12 h-12 rounded-lg object-cover"
+                              />
                               <div className="flex-1">
-                                <p className="font-medium text-foreground">Email</p>
-                                <p className="text-sm text-muted-foreground">{client.email}</p>
+                                <p className="font-medium text-foreground">{visit.service}</p>
+                                <p className="text-sm text-muted-foreground">{visit.date}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-foreground">${visit.price}</p>
+                                <div className="flex items-center">
+                                  {[...Array(visit.rating)].map((_, i) => (
+                                    <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                                  ))}
+                                </div>
                               </div>
                             </div>
-                          )}
-                          {client.phone && (
-                            <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-                              <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                                <Phone className="h-6 w-6 text-primary" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium text-foreground">Teléfono</p>
-                                <p className="text-sm text-muted-foreground">{client.phone}</p>
-                              </div>
-                            </div>
-                          )}
-                          {/* Placeholder para futuras visitas */}
-                          <div className="text-center py-4 text-muted-foreground">
-                            <p className="text-sm">Las visitas aparecerán aquí</p>
-                          </div>
+                          ))}
                         </div>
                       </div>
                       <div>
                         <h4 className="font-semibold text-foreground mb-3">Información Personal</h4>
                         <div className="space-y-3">
                           <div className="p-3 rounded-lg bg-muted/20">
-                            <p className="text-sm font-medium text-muted-foreground">Notas</p>
-                            <p className="text-foreground">{client.notes || 'Sin notas adicionales'}</p>
+                            <p className="text-sm font-medium text-muted-foreground">Preferencias</p>
+                            <p className="text-foreground">{client.preferences}</p>
                           </div>
                           <div className="p-3 rounded-lg bg-muted/20">
-                            <p className="text-sm font-medium text-muted-foreground">Fecha de Registro</p>
-                            <p className="text-foreground">{new Date(client.created_at).toLocaleDateString('es-ES')}</p>
+                            <p className="text-sm font-medium text-muted-foreground">Alergias</p>
+                            <p className="text-foreground">{client.allergies}</p>
                           </div>
                           <div className="flex space-x-2">
                             <Button
@@ -1304,23 +1265,11 @@ export function BarberDashboard() {
                     </div>
                   </CardContent>
                 </Card>
-              )) : (
-                <div className="text-center py-12">
-                  <div className="flex items-center justify-center w-20 h-20 rounded-full bg-muted/50 mx-auto mb-6">
-                    <Users className="h-10 w-10 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-bold text-foreground mb-3">Gestión de Clientes</h3>
-                  <p className="text-muted-foreground text-lg">
-                    Los clientes aparecerán aquí cuando los agregues
-                  </p>
-                </div>
-              )}
+              ))}
             </div>
           </TabsContent>
         </Tabs>
       </div>
     </div>
-    </>
   )
 }
-

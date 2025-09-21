@@ -3,17 +3,9 @@
 import { useEffect, useState } from "react"
 import { supabase } from "@/lib/supabase"
 
-interface TableInfo {
-  status: 'success' | 'error'
-  message: string
-  count: number
-  description: string
-  sampleData?: any[]
-}
-
 export default function DebugSupabase() {
   const [connectionStatus, setConnectionStatus] = useState<string>("Verificando...")
-  const [tablesStatus, setTablesStatus] = useState<Record<string, TableInfo>>({})
+  const [tablesStatus, setTablesStatus] = useState<Record<string, string>>({})
 
   useEffect(() => {
     const testConnection = async () => {
@@ -23,56 +15,29 @@ export default function DebugSupabase() {
         console.log("Auth test:", { user, userError })
         
         // Test 2: Verificar cada tabla en el esquema public
-        const tables = [
-          { name: 'role', description: 'Roles del sistema' },
-          { name: 'users', description: 'Usuarios y barberos' },
-          { name: 'client', description: 'Clientes de la barbería' },
-          { name: 'service', description: 'Servicios ofrecidos' },
-          { name: 'cita', description: 'Citas programadas' },
-          { name: 'cash_register', description: 'Registro de caja' },
-          { name: 'mov_cash', description: 'Movimientos de efectivo' },
-          { name: 'audit_log', description: 'Log de auditoría' },
-          { name: 'backup_log', description: 'Log de respaldos' }
-        ]
-        
-        const status: Record<string, TableInfo> = {}
+        const tables = ['role', 'user', 'client', 'service', 'cita']
+        const status: Record<string, string> = {}
         
         for (const table of tables) {
           try {
-            console.log(`Probando tabla: ${table.name}`)
+            console.log(`Probando tabla: ${table}`)
             
-            // Obtener conteo total y muestra de datos
-            const { data, error, count } = await supabase
-              .from(table.name)
-              .select('*', { count: 'exact' })
+            // Primero probar sin filtros
+            const { data, error } = await supabase
+              .from(table)
+              .select('*')
               .limit(5)
             
-            console.log(`Resultado para ${table.name}:`, { data, error, count })
+            console.log(`Resultado para ${table}:`, { data, error })
             
             if (error) {
-              status[table.name] = {
-                status: 'error',
-                message: `${error.message} (${error.code})`,
-                count: 0,
-                description: table.description
-              }
+              status[table] = `Error: ${error.message} (${error.code})`
             } else {
-              status[table.name] = {
-                status: 'success',
-                message: `OK`,
-                count: count || data?.length || 0,
-                description: table.description,
-                sampleData: data?.slice(0, 2) || []
-              }
+              status[table] = `OK (${data?.length || 0} registros)`
             }
           } catch (err) {
-            console.error(`Error en tabla ${table.name}:`, err)
-            status[table.name] = {
-              status: 'error',
-              message: `${err instanceof Error ? err.message : 'Unknown error'}`,
-              count: 0,
-              description: table.description
-            }
+            console.error(`Error en tabla ${table}:`, err)
+            status[table] = `Error: ${err instanceof Error ? err.message : 'Unknown error'}`
           }
         }
         
@@ -101,36 +66,13 @@ export default function DebugSupabase() {
 
       <div className="mb-4">
         <h3 className="text-lg font-semibold mb-2">Estado de Tablas (Esquema Public):</h3>
-        <div className="space-y-4">
-          {Object.entries(tablesStatus).map(([table, info]) => (
-            <div key={table} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <h4 className="font-semibold text-lg capitalize">{table}</h4>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">{info.description}</p>
-                </div>
-                <div className="text-right">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    info.status === 'success' 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                      : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                  }`}>
-                    {info.status === 'success' ? '✓' : '✗'} {info.message}
-                  </span>
-                  <p className="text-sm font-medium mt-1">{info.count} registros</p>
-                </div>
-              </div>
-              
-              {info.status === 'success' && info.sampleData && info.sampleData.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-xs font-medium text-gray-500 mb-2">Muestra de datos:</p>
-                  <div className="bg-gray-50 dark:bg-gray-800 rounded p-2 text-xs">
-                    <pre className="whitespace-pre-wrap overflow-x-auto">
-                      {JSON.stringify(info.sampleData, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              )}
+        <div className="space-y-2">
+          {Object.entries(tablesStatus).map(([table, status]) => (
+            <div key={table} className="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-800 rounded">
+              <span className="font-medium">{table}</span>
+              <span className={`text-sm ${status.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
+                {status}
+              </span>
             </div>
           ))}
         </div>
@@ -141,40 +83,6 @@ export default function DebugSupabase() {
         <div className="space-y-1 text-sm">
           <p>URL: {process.env.NEXT_PUBLIC_SUPABASE_URL ? '✅ Configurada' : '❌ No configurada'}</p>
           <p>Anon Key: {process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? '✅ Configurada' : '❌ No configurada'}</p>
-        </div>
-      </div>
-
-      {/* Resumen estadístico */}
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold mb-2">Resumen de la Base de Datos:</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {(() => {
-            const totalTables = Object.keys(tablesStatus).length
-            const successfulTables = Object.values(tablesStatus).filter((info: any) => info.status === 'success').length
-            const totalRecords = Object.values(tablesStatus).reduce((sum: number, info: any) => sum + (info.count || 0), 0)
-            const failedTables = totalTables - successfulTables
-
-            return (
-              <>
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-blue-600">{totalTables}</div>
-                  <div className="text-sm text-blue-600">Total Tablas</div>
-                </div>
-                <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-green-600">{successfulTables}</div>
-                  <div className="text-sm text-green-600">Conectadas</div>
-                </div>
-                <div className="bg-red-50 dark:bg-red-900/20 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-red-600">{failedTables}</div>
-                  <div className="text-sm text-red-600">Con Errores</div>
-                </div>
-                <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg text-center">
-                  <div className="text-2xl font-bold text-purple-600">{totalRecords}</div>
-                  <div className="text-sm text-purple-600">Total Registros</div>
-                </div>
-              </>
-            )
-          })()}
         </div>
       </div>
     </div>

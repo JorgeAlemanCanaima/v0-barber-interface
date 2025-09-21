@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import BookingSection from "@/components/booking-section"
+import { useState, useEffect } from "react"
 import { useServices, useBarbers } from "@/lib/hooks/useSupabase"
+import { useBooking } from "@/lib/hooks/useBooking"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -27,63 +29,9 @@ import {
   MessageCircle,
   Camera,
 } from "lucide-react"
+import Link from "next/link"
 
-const services = [
-  {
-    id: 1,
-    name: "Fade Clásico",
-    description: "Corte degradado profesional con acabado perfecto",
-    price: 25,
-    duration: "30 min",
-    image: "/placeholder-3491y.png?height=200&width=300&query=fade-haircut",
-    popular: true,
-  },
-  {
-    id: 2,
-    name: "Corte + Barba",
-    description: "Servicio completo de corte y arreglo de barba",
-    price: 35,
-    duration: "45 min",
-    image: "/placeholder-3491y.png?height=200&width=300&query=haircut-beard",
-    popular: true,
-  },
-  {
-    id: 3,
-    name: "Buzz Cut",
-    description: "Corte militar limpio y preciso",
-    price: 20,
-    duration: "20 min",
-    image: "/placeholder-3491y.png?height=200&width=300&query=buzz-cut",
-    popular: false,
-  },
-  {
-    id: 4,
-    name: "Pompadour",
-    description: "Estilo clásico con volumen y elegancia",
-    price: 30,
-    duration: "40 min",
-    image: "/placeholder-3491y.png?height=200&width=300&query=pompadour",
-    popular: false,
-  },
-  {
-    id: 5,
-    name: "Corte Tijera",
-    description: "Corte tradicional con tijera, acabado natural",
-    price: 28,
-    duration: "35 min",
-    image: "/placeholder-3491y.png?height=200&width=300&query=scissor-cut",
-    popular: false,
-  },
-  {
-    id: 6,
-    name: "Arreglo Barba",
-    description: "Perfilado y cuidado especializado de barba",
-    price: 15,
-    duration: "20 min",
-    image: "/placeholder-3491y.png?height=200&width=300&query=beard-trim",
-    popular: false,
-  },
-]
+// Los servicios ahora se obtienen dinámicamente desde Supabase
 
 const testimonials = [
   {
@@ -109,20 +57,7 @@ const testimonials = [
   },
 ]
 
-const availableSlots = [
-  { time: "09:00", available: true },
-  { time: "09:30", available: false },
-  { time: "10:00", available: true },
-  { time: "10:30", available: true },
-  { time: "11:00", available: false },
-  { time: "11:30", available: true },
-  { time: "14:00", available: true },
-  { time: "14:30", available: true },
-  { time: "15:00", available: false },
-  { time: "15:30", available: true },
-  { time: "16:00", available: true },
-  { time: "16:30", available: false },
-]
+// Los horarios ahora se obtienen dinámicamente desde la base de datos
 
 const styleShowcase = [
   {
@@ -166,6 +101,23 @@ const styleShowcase = [
 export function ClientView() {
   const { services, loading: servicesLoading, error: servicesError } = useServices()
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
+  const { getAvailableTimeSlots } = useBooking()
+  const [availableSlots, setAvailableSlots] = useState<{time: string, available: boolean}[]>([])
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
+
+  // Cargar horarios disponibles cuando cambie la fecha
+  useEffect(() => {
+    const loadSlots = async () => {
+      try {
+        const slots = await getAvailableTimeSlots(selectedDate)
+        setAvailableSlots(slots)
+      } catch (error) {
+        console.error('Error loading time slots:', error)
+        setAvailableSlots([])
+      }
+    }
+    loadSlots()
+  }, [selectedDate, getAvailableTimeSlots])
 
   if (servicesLoading || barbersLoading) {
     return (
@@ -205,10 +157,13 @@ export function ClientView() {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button
                 size="lg"
+                asChild
                 className="bg-white text-primary hover:bg-white/90 shadow-xl text-lg px-8 py-4 rounded-2xl font-bold hover-lift"
               >
-                <Calendar className="h-5 w-5 mr-2" />
-                Reservar Cita
+                <a href="/reservas">
+                  <Calendar className="h-5 w-5 mr-2" />
+                  Reservar Cita
+                </a>
               </Button>
               <Button
                 size="lg"
@@ -291,10 +246,13 @@ export function ClientView() {
                   </div>
                   <Button
                     size="sm"
+                    asChild
                     className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity gradient-bg text-white border-0 shadow-lg hover-lift"
                   >
-                    <Calendar className="h-4 w-4 mr-1" />
-                    Reservar
+                    <a href="/reservas">
+                      <Calendar className="h-4 w-4 mr-1" />
+                      Reservar
+                    </a>
                   </Button>
                 </div>
               </Card>
@@ -331,7 +289,7 @@ export function ClientView() {
                   />
                   <div className="absolute top-4 right-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
                     <Clock className="h-3 w-3 text-white" />
-                    <span className="text-xs text-white font-medium">{service.duration_min} min</span>
+                    <span className="text-xs text-white font-medium">{service.duration_min || 30} min</span>
                   </div>
                   <div className="absolute bottom-4 left-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-green-500/90 backdrop-blur-sm">
                     <CheckCircle className="h-3 w-3 text-white" />
@@ -360,9 +318,11 @@ export function ClientView() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full gradient-bg text-white hover:opacity-90 shadow-lg font-bold rounded-xl hover-lift">
-                    Reservar Ahora
-                    <ArrowRight className="h-4 w-4 ml-2" />
+                  <Button asChild className="w-full gradient-bg text-white hover:opacity-90 shadow-lg font-bold rounded-xl hover-lift">
+                    <a href="/reservas">
+                      Reservar Ahora
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </a>
                   </Button>
                 </CardContent>
               </Card>
@@ -372,95 +332,8 @@ export function ClientView() {
       </section>
 
       {/* Booking Section */}
-      <section className="py-20 bg-background">
-        <div className="container mx-auto px-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16 animate-fade-in">
-              <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">Reserva tu Cita</h2>
-              <p className="text-xl text-muted-foreground">
-                Selecciona tu horario preferido y déjanos cuidar tu estilo.
-              </p>
-            </div>
-
-            <div className="grid gap-8 lg:grid-cols-2 animate-slide-up">
-              <Card className="glass-card border-0">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-bold text-foreground flex items-center">
-                    <Calendar className="h-6 w-6 mr-3 text-primary" />
-                    Horarios Disponibles
-                  </CardTitle>
-                  <CardDescription>Selecciona el horario que mejor te convenga</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-3">
-                    {availableSlots.map((slot) => (
-                      <Button
-                        key={slot.time}
-                        variant={slot.available ? "outline" : "secondary"}
-                        disabled={!slot.available}
-                        className={`${
-                          slot.available
-                            ? "border-primary/20 hover:gradient-bg hover:text-white hover-lift"
-                            : "opacity-50 cursor-not-allowed"
-                        } rounded-xl font-semibold`}
-                      >
-                        {slot.available && <CheckCircle className="h-3 w-3 mr-1" />}
-                        {slot.time}
-                      </Button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card border-0">
-                <CardHeader>
-                  <CardTitle className="text-2xl font-bold text-foreground flex items-center">
-                    <MessageCircle className="h-6 w-6 mr-3 text-primary" />
-                    Información de Contacto
-                  </CardTitle>
-                  <CardDescription>Completa tus datos para confirmar la cita</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-semibold text-foreground mb-2 block">Nombre Completo</label>
-                    <Input placeholder="Tu nombre completo" className="rounded-xl border-border focus:border-primary" />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-foreground mb-2 block">Teléfono</label>
-                    <Input
-                      placeholder="Tu número de teléfono"
-                      className="rounded-xl border-border focus:border-primary"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-foreground mb-2 block">Servicio Deseado</label>
-                    <select className="w-full px-3 py-2 rounded-xl border border-border bg-background text-foreground focus:border-primary focus:outline-none">
-                      <option>Selecciona un servicio</option>
-                      {services.map((service) => (
-                        <option key={service.id} value={service.name}>
-                          {service.name} - ${service.price}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-semibold text-foreground mb-2 block">Comentarios (Opcional)</label>
-                    <Textarea
-                      placeholder="Alguna preferencia especial o comentario..."
-                      className="rounded-xl border-border focus:border-primary resize-none"
-                      rows={3}
-                    />
-                  </div>
-                  <Button className="w-full gradient-bg text-white hover:opacity-90 shadow-lg font-bold text-lg py-3 rounded-xl hover-lift">
-                    Confirmar Reserva
-                    <CheckCircle className="h-5 w-5 ml-2" />
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </section>
+  {/* Booking Section (reusable) */}
+  <BookingSection services={services} availableSlots={availableSlots} />
 
       {/* Testimonials Section */}
       <section className="py-20 bg-muted/30">
