@@ -1,11 +1,12 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AddServiceModal } from "@/components/add-service-modal"
 import {
   DollarSign,
   Users,
@@ -256,8 +257,11 @@ const styleGallery = [
 
 export function BarberDashboard() {
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
-  const { services, loading: servicesLoading, error: servicesError } = useServices()
+  const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices, addServiceLocally } = useServices()
   const { appointments, loading: appointmentsLoading, error: appointmentsError } = useAppointments()
+  
+  // Estado para el modal de agregar servicio
+  const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false)
 
   // Calcular estadísticas en tiempo real
   const { todayEarnings, todayClients, popularServiceName, averageRating } = useMemo(() => {
@@ -442,13 +446,8 @@ export function BarberDashboard() {
               <Users className="h-4 w-4 mr-2" />
               Clientes
             </TabsTrigger>
-            <TabsTrigger
-              value="services"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
-            >
-              <Scissors className="h-4 w-4 mr-2" />
-              Servicios
-            </TabsTrigger>
+           
+            
             <TabsTrigger
               value="appointments"
               className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
@@ -460,8 +459,8 @@ export function BarberDashboard() {
               value="inventory"
               className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
-              <Package className="h-4 w-4 mr-2" />
-              Inventario
+              <Scissors className="h-4 w-4 mr-2" />
+              Servicios
             </TabsTrigger>
             <TabsTrigger
               value="gallery"
@@ -652,42 +651,34 @@ export function BarberDashboard() {
           <TabsContent value="inventory" className="space-y-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-foreground">Gestión de Inventario</h2>
-                <p className="text-muted-foreground text-base">Control de productos y herramientas</p>
+                <h2 className="text-2xl font-bold text-foreground">Servicios Disponibles</h2>
+                <p className="text-muted-foreground text-base">Gestiona los servicios que ofreces a tus clientes</p>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
                   <Download className="h-4 w-4 mr-2" />
                   Exportar
                 </Button>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
+                <Button 
+                  onClick={() => setIsAddServiceModalOpen(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift"
+                >
                   <Plus className="h-4 w-4 mr-2" />
-                  Agregar Producto
+                  Agregar Servicio
                 </Button>
               </div>
             </div>
 
-            {/* Alertas de stock */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-red-500">
+            {/* Estadísticas de servicios */}
+            <div className="grid gap-4 md:grid-cols-4">
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-blue-500">
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Stock Crítico</p>
-                      <p className="text-2xl font-bold text-red-600">1</p>
+                      <p className="text-sm font-medium text-muted-foreground">Total Servicios</p>
+                      <p className="text-2xl font-bold text-blue-600">{services?.length || 0}</p>
                     </div>
-                    <AlertTriangle className="h-8 w-8 text-red-500" />
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="glass-card border-0 hover-lift border-l-4 border-l-yellow-500">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-muted-foreground">Stock Bajo</p>
-                      <p className="text-2xl font-bold text-yellow-600">1</p>
-                    </div>
-                    <Package className="h-8 w-8 text-yellow-500" />
+                    <Scissors className="h-8 w-8 text-blue-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -695,76 +686,115 @@ export function BarberDashboard() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Valor Total</p>
-                      <p className="text-2xl font-bold text-green-600">$1,247</p>
+                      <p className="text-sm font-medium text-muted-foreground">Servicio Más Popular</p>
+                      <p className="text-lg font-bold text-green-600">{popularServiceName}</p>
                     </div>
-                    <DollarSign className="h-8 w-8 text-green-500" />
+                    <Award className="h-8 w-8 text-green-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-purple-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Precio Promedio</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        ${services?.length > 0 ? (services.reduce((sum: number, service: any) => sum + (service.price || 0), 0) / services.length).toFixed(0) : 0}
+                      </p>
+                    </div>
+                    <DollarSign className="h-8 w-8 text-purple-500" />
+                  </div>
+                </CardContent>
+              </Card>
+              <Card className="glass-card border-0 hover-lift border-l-4 border-l-orange-500">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Duración Promedio</p>
+                      <p className="text-2xl font-bold text-orange-600">
+                        {services?.length > 0 ? (services.reduce((sum: number, service: any) => sum + (service.duration_min || 0), 0) / services.length).toFixed(0) : 0} min
+                      </p>
+                    </div>
+                    <Clock className="h-8 w-8 text-orange-500" />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Lista de productos */}
+            {/* Lista de servicios */}
             <Card className="glass-card border-0 hover-lift">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-foreground">Productos en Stock</CardTitle>
-                <CardDescription>Gestiona tu inventario de productos y herramientas</CardDescription>
+                <CardTitle className="text-xl font-bold text-foreground">Catálogo de Servicios</CardTitle>
+                <CardDescription>Administra todos los servicios disponibles para tus clientes</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {inventoryData.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center justify-between p-4 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
+                {services && services.length > 0 ? (
+                  <div className="space-y-4">
+                    {services.map((service: any) => (
+                      <div
+                        key={service.id}
+                        className="flex items-center justify-between p-6 rounded-xl bg-muted/20 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center justify-center w-12 h-12 rounded-xl gradient-bg shadow-lg">
+                            <Scissors className="h-6 w-6 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-lg text-foreground">{service.name}</p>
+                            <p className="text-sm text-muted-foreground">{service.description || 'Sin descripción'}</p>
+                            <div className="flex items-center space-x-4 mt-2">
+                              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                                <Clock className="h-3 w-3 mr-1" />
+                                {service.duration_min || 30} min
+                              </Badge>
+                              <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-600 border-green-200 dark:border-green-800">
+                                Disponible
+                              </Badge>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-6">
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Precio</p>
+                            <p className="text-2xl font-bold text-primary">${service.price || 0}</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-muted-foreground">Reservas</p>
+                            <p className="text-lg font-bold text-foreground">
+                              {appointments?.filter((apt: any) => apt.service_id === service.id).length || 0}
+                            </p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-12">
+                    <Scissors className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-foreground mb-2">No hay servicios</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Aún no has agregado ningún servicio a tu catálogo
+                    </p>
+                    <Button 
+                      onClick={() => setIsAddServiceModalOpen(true)}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift"
                     >
-                      <div className="flex items-center space-x-4">
-                        <div
-                          className={`w-3 h-3 rounded-full ${
-                            item.status === "critical"
-                              ? "bg-red-500"
-                              : item.status === "low"
-                                ? "bg-yellow-500"
-                                : "bg-green-500"
-                          }`}
-                        ></div>
-                        <div>
-                          <p className="font-semibold text-foreground">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">{item.category}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-6">
-                        <div className="text-center">
-                          <p className="text-sm text-muted-foreground">Stock</p>
-                          <p className="font-bold text-foreground">{item.stock}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm text-muted-foreground">Mín.</p>
-                          <p className="font-bold text-foreground">{item.minStock}</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-sm text-muted-foreground">Precio</p>
-                          <p className="font-bold text-foreground">${item.price}</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Primer Servicio
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1270,6 +1300,21 @@ export function BarberDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Modal para agregar servicio */}
+      <AddServiceModal
+        isOpen={isAddServiceModalOpen}
+        onClose={() => setIsAddServiceModalOpen(false)}
+        onServiceAdded={() => {
+          // Solo hacer refetch si no se agregó localmente
+          refetchServices()
+          setIsAddServiceModalOpen(false)
+        }}
+        onAddServiceLocally={(service) => {
+          addServiceLocally(service)
+          setIsAddServiceModalOpen(false)
+        }}
+      />
     </div>
   )
 }

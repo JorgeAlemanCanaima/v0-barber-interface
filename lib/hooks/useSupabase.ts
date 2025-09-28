@@ -199,7 +199,23 @@ export function useServices() {
     }
   }
 
-  return { services, loading, error, refetch: fetchServices }
+  // Función para agregar un servicio localmente (modo demo)
+  const addServiceLocally = (newService: Omit<Service, 'id'>) => {
+    console.log('addServiceLocally llamada con:', newService)
+    const serviceWithId = {
+      ...newService,
+      id: Date.now() // Usar timestamp como ID único
+    }
+    console.log('Servicio con ID:', serviceWithId)
+    setServices(prev => {
+      console.log('Servicios anteriores:', prev)
+      const newServices = [...prev, serviceWithId]
+      console.log('Nuevos servicios:', newServices)
+      return newServices
+    })
+  }
+
+  return { services, loading, error, refetch: fetchServices, addServiceLocally }
 }
 
 // Hook para obtener citas
