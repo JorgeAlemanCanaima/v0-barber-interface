@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AddServiceModal } from "@/components/add-service-modal"
+import { AddAppointmentModal } from "@/components/add-appointment-modal"
+import { AddClientModal } from "@/components/add-client-modal"
 import {
   DollarSign,
   Users,
@@ -52,7 +54,7 @@ import {
   AreaChart,
   Area,
 } from "recharts"
-import { useBarbers, useServices, useAppointments } from "@/lib/hooks/useSupabase"
+import { useBarbers, useServices, useAppointments, useClients } from "@/lib/hooks/useSupabase"
 
 // Datos de ejemplo (mantenidos para gráficos y datos que no están en la BD)
 const earningsData = [
@@ -258,10 +260,13 @@ const styleGallery = [
 export function BarberDashboard() {
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
   const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices, addServiceLocally } = useServices()
-  const { appointments, loading: appointmentsLoading, error: appointmentsError } = useAppointments()
+  const { appointments, loading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments } = useAppointments()
+  const { clients, loading: clientsLoading, error: clientsError, refetch: refetchClients } = useClients()
   
-  // Estado para el modal de agregar servicio
+  // Estado para los modales
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false)
+  const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false)
+  const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false)
 
   // Calcular estadísticas en tiempo real
   const { todayEarnings, todayClients, popularServiceName, averageRating } = useMemo(() => {
@@ -655,10 +660,7 @@ export function BarberDashboard() {
                 <p className="text-muted-foreground text-base">Gestiona los servicios que ofreces a tus clientes</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
-                </Button>
+               
                 <Button 
                   onClick={() => setIsAddServiceModalOpen(true)}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift"
@@ -1020,11 +1022,11 @@ export function BarberDashboard() {
                 <p className="text-muted-foreground text-base">Visualiza y administra todas las citas reservadas</p>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                  <Download className="h-4 w-4 mr-2" />
-                  Exportar
-                </Button>
-                <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
+             
+                <Button 
+                  onClick={() => setIsAddAppointmentModalOpen(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift"
+                >
                   <Plus className="h-4 w-4 mr-2" />
                   Nueva Cita
                 </Button>
@@ -1173,7 +1175,10 @@ export function BarberDashboard() {
                 <h2 className="text-2xl font-bold text-foreground">Gestión de Clientes</h2>
                 <p className="text-muted-foreground text-base">Administra tu base de clientes y su historial</p>
               </div>
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift">
+              <Button 
+                onClick={() => setIsAddClientModalOpen(true)}
+                className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Nuevo Cliente
               </Button>
@@ -1193,9 +1198,10 @@ export function BarberDashboard() {
               </Button>
             </div>
 
-            {/* Historial detallado de clientes */}
+            {/* Lista de clientes reales */}
             <div className="space-y-6">
-              {clientHistory.map((client) => (
+              {clients && clients.length > 0 ? (
+                clients.map((client) => (
                 <Card key={client.id} className="glass-card border-0 hover-lift">
                   <CardHeader>
                     <div className="flex items-center justify-between">
@@ -1203,27 +1209,29 @@ export function BarberDashboard() {
                         <Avatar className="h-16 w-16 ring-2 ring-primary/10">
                           <AvatarImage src={`/placeholder-3491y.png?height=64&width=64&query=client-${client.id}`} />
                           <AvatarFallback className="bg-primary/10 text-primary font-semibold text-lg">
-                            {client.clientName
+                            {client.name
                               .split(" ")
                               .map((n) => n[0])
                               .join("")}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <h3 className="text-xl font-bold text-foreground">{client.clientName}</h3>
+                          <h3 className="text-xl font-bold text-foreground">{client.name}</h3>
                           <p className="text-sm text-muted-foreground">
-                            {client.visits.length} visitas • ${client.totalSpent} gastado
+                            {client.phone} • {client.email || 'Sin email'}
                           </p>
                           <div className="flex items-center space-x-2 mt-1">
                             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                              {client.loyaltyPoints} puntos
+                              Cliente Activo
                             </Badge>
-                            <Badge
-                              variant="outline"
-                              className="bg-green-100 dark:bg-green-900/30 text-green-600 border-green-200 dark:border-green-800"
-                            >
-                              Cliente VIP
-                            </Badge>
+                            {client.user && (
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-100 dark:bg-blue-900/30 text-blue-600 border-blue-200 dark:border-blue-800"
+                              >
+                                {client.user.full_name}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1236,42 +1244,39 @@ export function BarberDashboard() {
                   <CardContent>
                     <div className="grid gap-6 lg:grid-cols-2">
                       <div>
-                        <h4 className="font-semibold text-foreground mb-3">Últimas Visitas</h4>
+                        <h4 className="font-semibold text-foreground mb-3">Información de Contacto</h4>
                         <div className="space-y-3">
-                          {client.visits.slice(0, 3).map((visit, index) => (
-                            <div key={index} className="flex items-center space-x-3 p-3 rounded-lg bg-muted/20">
-                              <img
-                                src={visit.photo || "/placeholder.svg"}
-                                alt={`Resultado ${visit.service}`}
-                                className="w-12 h-12 rounded-lg object-cover"
-                              />
-                              <div className="flex-1">
-                                <p className="font-medium text-foreground">{visit.service}</p>
-                                <p className="text-sm text-muted-foreground">{visit.date}</p>
-                              </div>
-                              <div className="text-right">
-                                <p className="font-semibold text-foreground">${visit.price}</p>
-                                <div className="flex items-center">
-                                  {[...Array(visit.rating)].map((_, i) => (
-                                    <Star key={i} className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                                  ))}
-                                </div>
-                              </div>
+                          <div className="p-3 rounded-lg bg-muted/20">
+                            <p className="text-sm font-medium text-muted-foreground">Teléfono</p>
+                            <p className="text-foreground">{client.phone}</p>
+                          </div>
+                          <div className="p-3 rounded-lg bg-muted/20">
+                            <p className="text-sm font-medium text-muted-foreground">Email</p>
+                            <p className="text-foreground">{client.email || 'No especificado'}</p>
+                          </div>
+                          {client.notes && (
+                            <div className="p-3 rounded-lg bg-muted/20">
+                              <p className="text-sm font-medium text-muted-foreground">Notas</p>
+                              <p className="text-foreground">{client.notes}</p>
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-foreground mb-3">Información Personal</h4>
+                        <h4 className="font-semibold text-foreground mb-3">Información del Barbero</h4>
                         <div className="space-y-3">
-                          <div className="p-3 rounded-lg bg-muted/20">
-                            <p className="text-sm font-medium text-muted-foreground">Preferencias</p>
-                            <p className="text-foreground">{client.preferences}</p>
-                          </div>
-                          <div className="p-3 rounded-lg bg-muted/20">
-                            <p className="text-sm font-medium text-muted-foreground">Alergias</p>
-                            <p className="text-foreground">{client.allergies}</p>
-                          </div>
+                          {client.user ? (
+                            <div className="p-3 rounded-lg bg-muted/20">
+                              <p className="text-sm font-medium text-muted-foreground">Barbero Asignado</p>
+                              <p className="text-foreground">{client.user.full_name}</p>
+                              <p className="text-xs text-muted-foreground">{client.user.email}</p>
+                            </div>
+                          ) : (
+                            <div className="p-3 rounded-lg bg-muted/20">
+                              <p className="text-sm font-medium text-muted-foreground">Barbero Asignado</p>
+                              <p className="text-foreground">No asignado</p>
+                            </div>
+                          )}
                           <div className="flex space-x-2">
                             <Button
                               size="sm"
@@ -1295,7 +1300,25 @@ export function BarberDashboard() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                ))
+              ) : (
+                <Card className="glass-card border-0 text-center py-12">
+                  <CardContent>
+                    <Users className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-xl font-semibold text-foreground mb-2">No hay clientes</h3>
+                    <p className="text-muted-foreground mb-4">
+                      Aún no has agregado ningún cliente a tu base de datos
+                    </p>
+                    <Button 
+                      onClick={() => setIsAddClientModalOpen(true)}
+                      className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Agregar Primer Cliente
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </TabsContent>
         </Tabs>
@@ -1313,6 +1336,26 @@ export function BarberDashboard() {
         onAddServiceLocally={(service) => {
           addServiceLocally(service)
           setIsAddServiceModalOpen(false)
+        }}
+      />
+
+      {/* Modal para agregar cita */}
+      <AddAppointmentModal
+        isOpen={isAddAppointmentModalOpen}
+        onClose={() => setIsAddAppointmentModalOpen(false)}
+        onAppointmentAdded={() => {
+          refetchAppointments()
+          setIsAddAppointmentModalOpen(false)
+        }}
+      />
+
+      {/* Modal para agregar cliente */}
+      <AddClientModal
+        isOpen={isAddClientModalOpen}
+        onClose={() => setIsAddClientModalOpen(false)}
+        onClientAdded={() => {
+          refetchClients()
+          setIsAddClientModalOpen(false)
         }}
       />
     </div>

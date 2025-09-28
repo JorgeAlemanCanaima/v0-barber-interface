@@ -39,6 +39,7 @@ export interface Client {
 export interface Service {
   id: number
   name: string
+  description?: string
   price: number
   duration_min: number
   is_active: boolean
@@ -52,6 +53,7 @@ export interface Cita {
   barber_user_id?: number
   fecha_hora: string
   estado: 'PENDIENTE' | 'CONFIRMADA' | 'CANCELADA' | 'ATENDIDA'
+  status_id: number
   created_at: string
   client?: Client
   service?: Service

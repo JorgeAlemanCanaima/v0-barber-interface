@@ -15,9 +15,9 @@ export function useBarbers() {
     try {
       setLoading(true)
       
-      // Intentar consultar la tabla user, si falla usar datos mock
+      // Intentar consultar la tabla users, si falla usar datos mock
       const { data, error } = await supabase
-        .from('user')
+        .from('users')
         .select('*')
 
       if (error) {
@@ -271,9 +271,14 @@ export function useCreateAppointment() {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Error creating appointment:', error)
+        throw error
+      }
+      
       return data
     } catch (err) {
+      console.error('Error completo al crear cita:', err)
       setError(err instanceof Error ? err.message : 'Error al crear cita')
       throw err
     } finally {
@@ -315,4 +320,39 @@ export function useClients() {
   }
 
   return { clients, loading, error, refetch: fetchClients }
+}
+
+// Hook para crear un cliente
+export function useCreateClient() {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createClient = async (clientData: Omit<Client, 'id' | 'created_at'>) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      // Intentar crear el cliente directamente
+      const { data, error } = await supabase
+        .from('client')
+        .insert([clientData])
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating client:', error)
+        throw error
+      }
+      
+      return data
+    } catch (err) {
+      console.error('Error completo al crear cliente:', err)
+      setError(err instanceof Error ? err.message : 'Error al crear cliente')
+      throw err
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return { createClient, loading, error }
 }

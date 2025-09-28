@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2, Plus, Scissors } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { Service, supabase } from "@/lib/supabase"
 import { useToast } from "@/components/ui/toast"
 
 interface AddServiceModalProps {
