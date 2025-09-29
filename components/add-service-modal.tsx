@@ -14,10 +14,9 @@ interface AddServiceModalProps {
   isOpen: boolean
   onClose: () => void
   onServiceAdded: () => void
-  onAddServiceLocally?: (service: Omit<Service, 'id'>) => void
 }
 
-export function AddServiceModal({ isOpen, onClose, onServiceAdded, onAddServiceLocally }: AddServiceModalProps) {
+export function AddServiceModal({ isOpen, onClose, onServiceAdded }: AddServiceModalProps) {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -65,50 +64,26 @@ export function AddServiceModal({ isOpen, onClose, onServiceAdded, onAddServiceL
     try {
       const serviceData = {
         name: formData.name.trim(),
-        description: formData.description.trim() || null,
         price: parseFloat(formData.price),
         duration_min: parseInt(formData.duration_min),
-        is_active: true,
-        created_at: new Date().toISOString()
+        is_active: true
       }
 
       console.log('Iniciando guardado de servicio:', serviceData)
 
-      // Intentar guardar en la base de datos
-      let error = null
-      try {
-        const { data, error: dbError } = await supabase
-          .from('service')
-          .insert([serviceData])
-          .select()
-          .single()
-        
-        error = dbError
-        if (data) {
-          console.log('Servicio guardado en BD:', data)
-        }
-      } catch (dbError) {
-        error = dbError
-        console.warn('Error al conectar con BD:', dbError)
-      }
+      // Guardar en la base de datos
+      const { data, error } = await supabase
+        .from('service')
+        .insert([serviceData])
+        .select()
+        .single()
 
       if (error) {
-        console.warn('Error al crear servicio en BD:', error)
-        // Si hay error en la BD, agregar localmente
-        console.log('Guardando servicio localmente (modo demo)')
-        console.log('Datos del servicio:', serviceData)
-        
-        if (onAddServiceLocally) {
-          console.log('Llamando a onAddServiceLocally...')
-          onAddServiceLocally(serviceData)
-          console.log('Servicio agregado localmente')
-        } else {
-          console.log('onAddServiceLocally no está disponible')
-        }
-        
-        // Simular delay para mostrar el loading
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        console.error('Error al crear servicio en BD:', error)
+        throw new Error(`Error al guardar servicio: ${error.message}`)
       }
+
+      console.log('Servicio guardado exitosamente en BD:', data)
 
       // Limpiar formulario
       setFormData({
@@ -124,13 +99,7 @@ export function AddServiceModal({ isOpen, onClose, onServiceAdded, onAddServiceL
       success('¡Servicio agregado exitosamente!', `"${formData.name}" se ha agregado al catálogo`)
       
       // Cerrar modal y actualizar lista
-      if (error) {
-        // Si hubo error en BD, ya se agregó localmente, solo cerrar modal
-        onClose()
-      } else {
-        // Si se guardó en BD, hacer refetch
-        onServiceAdded()
-      }
+      onServiceAdded()
 
     } catch (err) {
       console.error('Error inesperado:', err)

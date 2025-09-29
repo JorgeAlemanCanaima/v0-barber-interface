@@ -112,110 +112,25 @@ export function useServices() {
         .select('*')
 
       if (error) {
-        console.warn('Error al cargar servicios de la base de datos:', error.message)
-        // Si no hay tabla service, usar datos mock
-        const mockServices = [
-          {
-            id: 1,
-            name: "Fade Clásico",
-            price: 25,
-            duration_min: 30,
-            is_active: true,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: 2,
-            name: "Corte + Barba",
-            price: 35,
-            duration_min: 45,
-            is_active: true,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: 3,
-            name: "Buzz Cut",
-            price: 20,
-            duration_min: 20,
-            is_active: true,
-            created_at: new Date().toISOString()
-          }
-        ]
-        setServices(mockServices)
+        console.error('Error al cargar servicios de la base de datos:', error.message)
+        setError(error.message)
+        setServices([])
         return
       }
       
       // Filtrar solo servicios activos
       const activeServices = data?.filter(service => service.is_active !== false) || []
-      
-      // Si no hay servicios activos, usar mock
-      if (activeServices.length === 0) {
-        const mockServices = [
-          {
-            id: 1,
-            name: "Fade Clásico",
-            price: 25,
-            duration_min: 30,
-            is_active: true,
-            created_at: new Date().toISOString()
-          },
-          {
-            id: 2,
-            name: "Corte + Barba",
-            price: 35,
-            duration_min: 45,
-            is_active: true,
-            created_at: new Date().toISOString()
-          }
-        ]
-        setServices(mockServices)
-      } else {
-        setServices(activeServices)
-      }
+      setServices(activeServices)
     } catch (err) {
       console.error('Error completo al cargar servicios:', err)
-      // En caso de error, usar datos mock
-      const mockServices = [
-        {
-          id: 1,
-          name: "Fade Clásico",
-          price: 25,
-          duration_min: 30,
-          is_active: true,
-          created_at: new Date().toISOString()
-        },
-        {
-          id: 2,
-          name: "Corte + Barba",
-          price: 35,
-          duration_min: 45,
-          is_active: true,
-          created_at: new Date().toISOString()
-        }
-      ]
-      setServices(mockServices)
-      setError(null) // No mostrar error si tenemos datos mock
+      setError(err instanceof Error ? err.message : 'Error al cargar servicios')
+      setServices([])
     } finally {
       setLoading(false)
     }
   }
 
-  // Función para agregar un servicio localmente (modo demo)
-  const addServiceLocally = (newService: Omit<Service, 'id'>) => {
-    console.log('addServiceLocally llamada con:', newService)
-    const serviceWithId = {
-      ...newService,
-      id: Date.now() // Usar timestamp como ID único
-    }
-    console.log('Servicio con ID:', serviceWithId)
-    setServices(prev => {
-      console.log('Servicios anteriores:', prev)
-      const newServices = [...prev, serviceWithId]
-      console.log('Nuevos servicios:', newServices)
-      return newServices
-    })
-  }
-
-  return { services, loading, error, refetch: fetchServices, addServiceLocally }
+  return { services, loading, error, refetch: fetchServices }
 }
 
 // Hook para obtener citas

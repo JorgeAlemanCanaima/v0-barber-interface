@@ -259,7 +259,7 @@ const styleGallery = [
 
 export function BarberDashboard() {
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
-  const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices, addServiceLocally } = useServices()
+  const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useServices()
   const { appointments, loading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments } = useAppointments()
   const { clients, loading: clientsLoading, error: clientsError, refetch: refetchClients } = useClients()
   
@@ -329,21 +329,7 @@ export function BarberDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent relative">
-                <Bell className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Notificaciones</span>
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center">
-                  <span className="text-xs text-white font-bold">2</span>
-                </div>
-              </Button>
-              <Button variant="outline" size="sm" className="glass-card border-0 hover-lift bg-transparent">
-                <Settings className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Configuración</span>
-              </Button>
-              <div className="hidden md:flex items-center space-x-3 px-4 py-2 rounded-xl glass-card">
-                <Calendar className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">15 Junio 2024</span>
-              </div>
+            
               <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
                 <AvatarImage src="/barber-shop.png" />
                 <AvatarFallback className="gradient-bg text-white font-bold text-lg">JD</AvatarFallback>
@@ -1329,12 +1315,7 @@ export function BarberDashboard() {
         isOpen={isAddServiceModalOpen}
         onClose={() => setIsAddServiceModalOpen(false)}
         onServiceAdded={() => {
-          // Solo hacer refetch si no se agregó localmente
           refetchServices()
-          setIsAddServiceModalOpen(false)
-        }}
-        onAddServiceLocally={(service) => {
-          addServiceLocally(service)
           setIsAddServiceModalOpen(false)
         }}
       />
