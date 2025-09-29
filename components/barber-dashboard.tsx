@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AddServiceModal } from "@/components/add-service-modal"
 import { EditServiceModal } from "@/components/edit-service-modal"
+import { DeleteServiceModal } from "@/components/delete-service-modal"
 import { AddAppointmentModal } from "@/components/add-appointment-modal"
 import { AddClientModal } from "@/components/add-client-modal"
 import {
@@ -267,6 +268,7 @@ export function BarberDashboard() {
   // Estado para los modales
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false)
   const [isEditServiceModalOpen, setIsEditServiceModalOpen] = useState(false)
+  const [isDeleteServiceModalOpen, setIsDeleteServiceModalOpen] = useState(false)
   const [selectedService, setSelectedService] = useState<any>(null)
   const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false)
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false)
@@ -275,6 +277,12 @@ export function BarberDashboard() {
   const handleEditService = (service: any) => {
     setSelectedService(service)
     setIsEditServiceModalOpen(true)
+  }
+
+  // Función para abrir modal de eliminación
+  const handleDeleteService = (service: any) => {
+    setSelectedService(service)
+    setIsDeleteServiceModalOpen(true)
   }
 
   // Calcular estadísticas en tiempo real
@@ -773,7 +781,12 @@ export function BarberDashboard() {
                             <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
                               <Eye className="h-4 w-4" />
                             </Button>
-                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-border hover:bg-red-50 hover:border-red-200 hover:text-red-600 bg-transparent hover-lift"
+                              onClick={() => handleDeleteService(service)}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -1344,6 +1357,21 @@ export function BarberDashboard() {
         onServiceUpdated={() => {
           refetchServices()
           setIsEditServiceModalOpen(false)
+          setSelectedService(null)
+        }}
+        service={selectedService}
+      />
+
+      {/* Modal para eliminar servicio */}
+      <DeleteServiceModal
+        isOpen={isDeleteServiceModalOpen}
+        onClose={() => {
+          setIsDeleteServiceModalOpen(false)
+          setSelectedService(null)
+        }}
+        onServiceDeleted={() => {
+          refetchServices()
+          setIsDeleteServiceModalOpen(false)
           setSelectedService(null)
         }}
         service={selectedService}
