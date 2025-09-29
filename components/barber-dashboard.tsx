@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AddServiceModal } from "@/components/add-service-modal"
+import { EditServiceModal } from "@/components/edit-service-modal"
 import { AddAppointmentModal } from "@/components/add-appointment-modal"
 import { AddClientModal } from "@/components/add-client-modal"
 import {
@@ -265,8 +266,16 @@ export function BarberDashboard() {
   
   // Estado para los modales
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false)
+  const [isEditServiceModalOpen, setIsEditServiceModalOpen] = useState(false)
+  const [selectedService, setSelectedService] = useState<any>(null)
   const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false)
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false)
+
+  // Función para abrir modal de edición
+  const handleEditService = (service: any) => {
+    setSelectedService(service)
+    setIsEditServiceModalOpen(true)
+  }
 
   // Calcular estadísticas en tiempo real
   const { todayEarnings, todayClients, popularServiceName, averageRating } = useMemo(() => {
@@ -753,7 +762,12 @@ export function BarberDashboard() {
                             </p>
                           </div>
                           <div className="flex space-x-2">
-                            <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                              onClick={() => handleEditService(service)}
+                            >
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
@@ -1318,6 +1332,21 @@ export function BarberDashboard() {
           refetchServices()
           setIsAddServiceModalOpen(false)
         }}
+      />
+
+      {/* Modal para editar servicio */}
+      <EditServiceModal
+        isOpen={isEditServiceModalOpen}
+        onClose={() => {
+          setIsEditServiceModalOpen(false)
+          setSelectedService(null)
+        }}
+        onServiceUpdated={() => {
+          refetchServices()
+          setIsEditServiceModalOpen(false)
+          setSelectedService(null)
+        }}
+        service={selectedService}
       />
 
       {/* Modal para agregar cita */}
