@@ -10,6 +10,7 @@ import { AddServiceModal } from "@/components/add-service-modal"
 import { EditServiceModal } from "@/components/edit-service-modal"
 import { DeleteServiceModal } from "@/components/delete-service-modal"
 import { AddAppointmentModal } from "@/components/add-appointment-modal"
+import { EditAppointmentModal } from "@/components/edit-appointment-modal"
 import { AddClientModal } from "@/components/add-client-modal"
 import {
   DollarSign,
@@ -271,6 +272,8 @@ export function BarberDashboard() {
   const [isDeleteServiceModalOpen, setIsDeleteServiceModalOpen] = useState(false)
   const [selectedService, setSelectedService] = useState<any>(null)
   const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false)
+  const [isEditAppointmentModalOpen, setIsEditAppointmentModalOpen] = useState(false)
+  const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false)
 
   // Función para abrir modal de edición
@@ -283,6 +286,12 @@ export function BarberDashboard() {
   const handleDeleteService = (service: any) => {
     setSelectedService(service)
     setIsDeleteServiceModalOpen(true)
+  }
+
+  // Función para abrir modal de edición de cita
+  const handleEditAppointment = (appointment: any) => {
+    setSelectedAppointment(appointment)
+    setIsEditAppointmentModalOpen(true)
   }
 
   // Calcular estadísticas en tiempo real
@@ -1155,7 +1164,12 @@ export function BarberDashboard() {
                               </p>
                             </div>
                             <div className="flex space-x-2">
-                              <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                                onClick={() => handleEditAppointment(appointment)}
+                              >
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
@@ -1385,6 +1399,21 @@ export function BarberDashboard() {
           refetchAppointments()
           setIsAddAppointmentModalOpen(false)
         }}
+      />
+
+      {/* Modal para editar cita */}
+      <EditAppointmentModal
+        isOpen={isEditAppointmentModalOpen}
+        onClose={() => {
+          setIsEditAppointmentModalOpen(false)
+          setSelectedAppointment(null)
+        }}
+        onAppointmentUpdated={() => {
+          refetchAppointments()
+          setIsEditAppointmentModalOpen(false)
+          setSelectedAppointment(null)
+        }}
+        appointment={selectedAppointment}
       />
 
       {/* Modal para agregar cliente */}
