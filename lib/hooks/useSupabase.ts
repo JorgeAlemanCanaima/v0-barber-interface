@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { supabase, User, Service, Cita, Client, Role } from '../supabase'
+import { supabase, User, Service, Cita, Client, Role, Notification } from '../supabase'
 
 // Hook para obtener barberos (usuarios con rol 'barbero')
 export function useBarbers() {
@@ -270,4 +270,104 @@ export function useCreateClient() {
   }
 
   return { createClient, loading, error }
+}
+
+// Hook para obtener notificaciones
+export function useNotifications() {
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchNotifications()
+  }, [])
+
+  const fetchNotifications = async () => {
+    try {
+      setLoading(true)
+      
+      const { data, error } = await supabase
+        .from('notification')
+        .select(`
+          *,
+          user:user_id(id, full_name, email)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Error al cargar notificaciones:', error.message)
+        setError(error.message)
+        setNotifications([])
+        return
+      }
+      
+      console.log('Notificaciones cargadas desde Supabase:', data)
+      setNotifications(data || [])
+    } catch (err) {
+      console.error('Error completo al cargar notificaciones:', err)
+      setError(err instanceof Error ? err.message : 'Error al cargar notificaciones')
+      setNotifications([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const markAsRead = async (notificationId: number) => {
+    try {
+      const { error } = await supabase
+        .from('notification')
+        .update({ 
+          is_read: true, 
+          read_at: new Date().toISOString() 
+        })
+        .eq('id', notificationId)
+
+      if (error) throw error
+
+      // Actualizar el estado local
+      setNotifications(prev => 
+        prev.map(notification => 
+          notification.id === notificationId 
+            ? { ...notification, is_read: true, read_at: new Date().toISOString() }
+            : notification
+        )
+      )
+    } catch (err) {
+      console.error('Error al marcar notificación como leída:', err)
+    }
+  }
+
+  const markAllAsRead = async () => {
+    try {
+      const { error } = await supabase
+        .from('notification')
+        .update({ 
+          is_read: true, 
+          read_at: new Date().toISOString() 
+        })
+        .eq('is_read', false)
+
+      if (error) throw error
+
+      // Actualizar el estado local
+      setNotifications(prev => 
+        prev.map(notification => 
+          !notification.is_read 
+            ? { ...notification, is_read: true, read_at: new Date().toISOString() }
+            : notification
+        )
+      )
+    } catch (err) {
+      console.error('Error al marcar todas las notificaciones como leídas:', err)
+    }
+  }
+
+  return { 
+    notifications, 
+    loading, 
+    error, 
+    refetch: fetchNotifications,
+    markAsRead,
+    markAllAsRead
+  }
 }

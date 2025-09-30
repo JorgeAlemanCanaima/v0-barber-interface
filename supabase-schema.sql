@@ -57,6 +57,21 @@ CREATE TABLE IF NOT EXISTS cita (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Crear tabla de notificaciones
+CREATE TABLE IF NOT EXISTS notification (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES "user"(id),
+    type VARCHAR(50) NOT NULL CHECK (type IN ('appointment', 'inventory', 'review', 'payment', 'birthday', 'system', 'reminder')),
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    is_urgent BOOLEAN DEFAULT false,
+    related_id INTEGER, -- ID relacionado (cita, servicio, etc.)
+    related_type VARCHAR(50), -- Tipo de relación (cita, service, etc.)
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    read_at TIMESTAMP WITH TIME ZONE
+);
+
 -- Insertar algunos servicios de ejemplo
 INSERT INTO service (name, description, price, duration_min) VALUES 
 ('Fade Clásico', 'Corte moderno con degradado perfecto', 25.00, 30),
@@ -71,14 +86,26 @@ INSERT INTO "user" (role_id, email, password_hash, full_name, phone) VALUES
 (1, 'barbero@barberia.com', 'hashed_password', 'Carlos Mendoza', '+1234567890')
 ON CONFLICT (email) DO NOTHING;
 
+-- Insertar algunas notificaciones de ejemplo
+INSERT INTO notification (user_id, type, title, message, is_urgent, related_type, related_id) VALUES 
+(1, 'appointment', 'Cita en 30 minutos', 'Luis García - Fade Clásico a las 16:00', true, 'cita', 1),
+(1, 'inventory', 'Stock bajo', 'Cera para Cabello - Solo quedan 3 unidades', true, 'service', 2),
+(1, 'review', 'Nueva reseña', 'Carlos Mendoza dejó una reseña de 5 estrellas', false, 'cita', 2),
+(1, 'payment', 'Pago recibido', 'Pago de $35 - Miguel Torres', false, 'cita', 3),
+(1, 'birthday', 'Cumpleaños cliente', 'Juan Pérez cumple años mañana', false, 'client', 1),
+(1, 'reminder', 'Recordatorio de cita', 'Recordar confirmar cita de mañana con Pedro Martín', false, 'cita', 4)
+ON CONFLICT DO NOTHING;
+
 -- Habilitar RLS (Row Level Security) si es necesario
 ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE client ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cita ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification ENABLE ROW LEVEL SECURITY;
 
 -- Crear políticas básicas (permite todo por ahora)
 CREATE POLICY "Enable all operations for all users" ON "user" FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON client FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON service FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON cita FOR ALL USING (true);
+CREATE POLICY "Enable all operations for all users" ON notification FOR ALL USING (true);

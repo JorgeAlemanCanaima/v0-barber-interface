@@ -81,3 +81,18 @@ export interface MovCash {
   created_by: number
   created_at: string
 }
+
+export interface Notification {
+  id: number
+  user_id: number
+  type: 'appointment' | 'inventory' | 'review' | 'payment' | 'birthday' | 'system' | 'reminder'
+  title: string
+  message: string
+  is_read: boolean
+  is_urgent: boolean
+  related_id?: number
+  related_type?: string
+  created_at: string
+  read_at?: string
+  user?: User
+}

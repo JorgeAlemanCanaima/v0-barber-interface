@@ -45,6 +45,7 @@ import {
   UserCheck,
   Zap,
   Heart,
+  RefreshCw,
 } from "lucide-react"
 import {
   PieChart,
@@ -58,7 +59,7 @@ import {
   AreaChart,
   Area,
 } from "recharts"
-import { useBarbers, useServices, useAppointments, useClients } from "@/lib/hooks/useSupabase"
+import { useBarbers, useServices, useAppointments, useClients, useNotifications } from "@/lib/hooks/useSupabase"
 
 // Datos de ejemplo (mantenidos para gráficos y datos que no están en la BD)
 const earningsData = [
@@ -167,48 +168,6 @@ const clientHistory = [
   },
 ]
 
-const notifications = [
-  {
-    id: 1,
-    type: "appointment",
-    title: "Cita en 30 minutos",
-    message: "Luis García - Fade Clásico",
-    time: "hace 5 min",
-    urgent: true,
-  },
-  {
-    id: 2,
-    type: "inventory",
-    title: "Stock bajo",
-    message: "Cera para Cabello - Solo quedan 3 unidades",
-    time: "hace 1 hora",
-    urgent: true,
-  },
-  {
-    id: 3,
-    type: "review",
-    title: "Nueva reseña",
-    message: "Carlos Mendoza dejó una reseña de 5 estrellas",
-    time: "hace 2 horas",
-    urgent: false,
-  },
-  {
-    id: 4,
-    type: "payment",
-    title: "Pago recibido",
-    message: "Pago de $35 - Miguel Torres",
-    time: "hace 3 horas",
-    urgent: false,
-  },
-  {
-    id: 5,
-    type: "birthday",
-    title: "Cumpleaños cliente",
-    message: "Juan Pérez cumple años mañana",
-    time: "hace 4 horas",
-    urgent: false,
-  },
-]
 
 // Función para obtener la imagen correspondiente a cada servicio
 const getServiceImage = (serviceName: string) => {
@@ -250,6 +209,7 @@ export function BarberDashboard() {
   const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useServices()
   const { appointments, loading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments } = useAppointments()
   const { clients, loading: clientsLoading, error: clientsError, refetch: refetchClients } = useClients()
+  const { notifications, loading: notificationsLoading, error: notificationsError, markAsRead, markAllAsRead, refetch: refetchNotifications } = useNotifications()
   
   // Estado para los modales
   const [isAddServiceModalOpen, setIsAddServiceModalOpen] = useState(false)
@@ -316,7 +276,7 @@ export function BarberDashboard() {
     }
   }, [appointments, services])
 
-  if (barbersLoading || servicesLoading || appointmentsLoading) {
+  if (barbersLoading || servicesLoading || appointmentsLoading || notificationsLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center space-y-4">
@@ -942,10 +902,25 @@ export function BarberDashboard() {
                 <h2 className="text-2xl font-bold text-foreground">Centro de Notificaciones</h2>
                 <p className="text-muted-foreground text-base">Mantente al día con todas las alertas</p>
               </div>
-              <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                <UserCheck className="h-4 w-4 mr-2" />
-                Marcar Todo Leído
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                  onClick={refetchNotifications}
+                  disabled={notificationsLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${notificationsLoading ? 'animate-spin' : ''}`} />
+                  Actualizar
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                  onClick={markAllAsRead}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Marcar Todo Leído
+                </Button>
+              </div>
             </div>
 
             {/* Resumen de notificaciones */}
@@ -955,7 +930,9 @@ export function BarberDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-muted-foreground">Urgentes</p>
-                      <p className="text-2xl font-bold text-red-600">2</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {notifications?.filter(n => n.is_urgent && !n.is_read).length || 0}
+                      </p>
                     </div>
                     <AlertTriangle className="h-8 w-8 text-red-500" />
                   </div>
@@ -965,10 +942,12 @@ export function BarberDashboard() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Citas Hoy</p>
-                      <p className="text-2xl font-bold text-blue-600">3</p>
+                      <p className="text-sm font-medium text-muted-foreground">No Leídas</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {notifications?.filter(n => !n.is_read).length || 0}
+                      </p>
                     </div>
-                    <Calendar className="h-8 w-8 text-blue-500" />
+                    <Bell className="h-8 w-8 text-blue-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -976,10 +955,12 @@ export function BarberDashboard() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Reseñas</p>
-                      <p className="text-2xl font-bold text-green-600">1</p>
+                      <p className="text-sm font-medium text-muted-foreground">Citas</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {notifications?.filter(n => n.type === 'appointment').length || 0}
+                      </p>
                     </div>
-                    <Star className="h-8 w-8 text-green-500" />
+                    <Calendar className="h-8 w-8 text-green-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -987,10 +968,12 @@ export function BarberDashboard() {
                 <CardContent className="pt-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">Cumpleaños</p>
-                      <p className="text-2xl font-bold text-purple-600">1</p>
+                      <p className="text-sm font-medium text-muted-foreground">Total</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {notifications?.length || 0}
+                      </p>
                     </div>
-                    <Gift className="h-8 w-8 text-purple-500" />
+                    <MessageSquare className="h-8 w-8 text-purple-500" />
                   </div>
                 </CardContent>
               </Card>
@@ -1001,60 +984,111 @@ export function BarberDashboard() {
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-foreground">Notificaciones Recientes</CardTitle>
                 <CardDescription>Últimas alertas y actualizaciones</CardDescription>
+                {notificationsError && (
+                  <div className="text-red-500 text-sm">
+                    Error: {notificationsError}
+                  </div>
+                )}
+                {notificationsLoading && (
+                  <div className="text-blue-500 text-sm">
+                    Cargando notificaciones...
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`flex items-center justify-between p-4 rounded-xl transition-colors ${
-                        notification.urgent
-                          ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
-                          : "bg-muted/20 hover:bg-muted/40"
-                      }`}
-                    >
-                      <div className="flex items-center space-x-4">
+                  {notifications && notifications.length > 0 ? (
+                    notifications.map((notification) => {
+                      const getTimeAgo = (dateString: string) => {
+                        const now = new Date()
+                        const notificationDate = new Date(dateString)
+                        const diffInMinutes = Math.floor((now.getTime() - notificationDate.getTime()) / (1000 * 60))
+                        
+                        if (diffInMinutes < 1) return 'Ahora mismo'
+                        if (diffInMinutes < 60) return `hace ${diffInMinutes} min`
+                        if (diffInMinutes < 1440) return `hace ${Math.floor(diffInMinutes / 60)} horas`
+                        return `hace ${Math.floor(diffInMinutes / 1440)} días`
+                      }
+
+                      const getTypeIcon = (type: string) => {
+                        switch (type) {
+                          case 'appointment': return <Calendar className="h-5 w-5 text-blue-600" />
+                          case 'inventory': return <Package className="h-5 w-5 text-yellow-600" />
+                          case 'review': return <Star className="h-5 w-5 text-green-600" />
+                          case 'payment': return <CreditCard className="h-5 w-5 text-emerald-600" />
+                          case 'birthday': return <Gift className="h-5 w-5 text-purple-600" />
+                          case 'system': return <Settings className="h-5 w-5 text-gray-600" />
+                          case 'reminder': return <Bell className="h-5 w-5 text-orange-600" />
+                          default: return <MessageSquare className="h-5 w-5 text-gray-600" />
+                        }
+                      }
+
+                      const getTypeBgColor = (type: string) => {
+                        switch (type) {
+                          case 'appointment': return "bg-blue-100 dark:bg-blue-900/30"
+                          case 'inventory': return "bg-yellow-100 dark:bg-yellow-900/30"
+                          case 'review': return "bg-green-100 dark:bg-green-900/30"
+                          case 'payment': return "bg-emerald-100 dark:bg-emerald-900/30"
+                          case 'birthday': return "bg-purple-100 dark:bg-purple-900/30"
+                          case 'system': return "bg-gray-100 dark:bg-gray-900/30"
+                          case 'reminder': return "bg-orange-100 dark:bg-orange-900/30"
+                          default: return "bg-gray-100 dark:bg-gray-900/30"
+                        }
+                      }
+
+                      return (
                         <div
-                          className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            notification.type === "appointment"
-                              ? "bg-blue-100 dark:bg-blue-900/30"
-                              : notification.type === "inventory"
-                                ? "bg-yellow-100 dark:bg-yellow-900/30"
-                                : notification.type === "review"
-                                  ? "bg-green-100 dark:bg-green-900/30"
-                                  : notification.type === "payment"
-                                    ? "bg-emerald-100 dark:bg-emerald-900/30"
-                                    : "bg-purple-100 dark:bg-purple-900/30"
+                          key={notification.id}
+                          className={`flex items-center justify-between p-4 rounded-xl transition-colors cursor-pointer ${
+                            notification.is_urgent
+                              ? "bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800"
+                              : notification.is_read
+                                ? "bg-muted/10 hover:bg-muted/20"
+                                : "bg-muted/20 hover:bg-muted/40 border-l-4 border-l-primary"
                           }`}
+                          onClick={() => !notification.is_read && markAsRead(notification.id)}
                         >
-                          {notification.type === "appointment" && <Calendar className="h-5 w-5 text-blue-600" />}
-                          {notification.type === "inventory" && <Package className="h-5 w-5 text-yellow-600" />}
-                          {notification.type === "review" && <Star className="h-5 w-5 text-green-600" />}
-                          {notification.type === "payment" && <CreditCard className="h-5 w-5 text-emerald-600" />}
-                          {notification.type === "birthday" && <Gift className="h-5 w-5 text-purple-600" />}
+                          <div className="flex items-center space-x-4">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${getTypeBgColor(notification.type)}`}>
+                              {getTypeIcon(notification.type)}
+                            </div>
+                            <div>
+                              <p className={`font-semibold ${notification.is_read ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                {notification.title}
+                              </p>
+                              <p className="text-sm text-muted-foreground">{notification.message}</p>
+                              <p className="text-xs text-muted-foreground">{getTimeAgo(notification.created_at)}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            {notification.is_urgent && (
+                              <Badge variant="destructive" className="bg-red-500 text-white">
+                                Urgente
+                              </Badge>
+                            )}
+                            {!notification.is_read && (
+                              <div className="w-2 h-2 bg-primary rounded-full"></div>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-foreground">{notification.title}</p>
-                          <p className="text-sm text-muted-foreground">{notification.message}</p>
-                          <p className="text-xs text-muted-foreground">{notification.time}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {notification.urgent && (
-                          <Badge variant="destructive" className="bg-red-500 text-white">
-                            Urgente
-                          </Badge>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
+                      )
+                    })
+                  ) : (
+                    <div className="text-center py-12">
+                      <Bell className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                      <h3 className="text-xl font-semibold text-foreground mb-2">No hay notificaciones</h3>
+                      <p className="text-muted-foreground">
+                        No tienes notificaciones en este momento
+                      </p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </CardContent>
             </Card>
