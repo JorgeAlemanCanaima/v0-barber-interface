@@ -11,6 +11,7 @@ import { EditServiceModal } from "@/components/edit-service-modal"
 import { DeleteServiceModal } from "@/components/delete-service-modal"
 import { AddAppointmentModal } from "@/components/add-appointment-modal"
 import { EditAppointmentModal } from "@/components/edit-appointment-modal"
+import { ViewAppointmentModal } from "@/components/view-appointment-modal"
 import { AddClientModal } from "@/components/add-client-modal"
 import {
   DollarSign,
@@ -273,6 +274,7 @@ export function BarberDashboard() {
   const [selectedService, setSelectedService] = useState<any>(null)
   const [isAddAppointmentModalOpen, setIsAddAppointmentModalOpen] = useState(false)
   const [isEditAppointmentModalOpen, setIsEditAppointmentModalOpen] = useState(false)
+  const [isViewAppointmentModalOpen, setIsViewAppointmentModalOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false)
 
@@ -292,6 +294,12 @@ export function BarberDashboard() {
   const handleEditAppointment = (appointment: any) => {
     setSelectedAppointment(appointment)
     setIsEditAppointmentModalOpen(true)
+  }
+
+  // Función para abrir modal de visualización de cita
+  const handleViewAppointment = (appointment: any) => {
+    setSelectedAppointment(appointment)
+    setIsViewAppointmentModalOpen(true)
   }
 
   // Calcular estadísticas en tiempo real
@@ -1172,7 +1180,12 @@ export function BarberDashboard() {
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="outline" size="sm" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                                onClick={() => handleViewAppointment(appointment)}
+                              >
                                 <Eye className="h-4 w-4" />
                               </Button>
                             </div>
@@ -1412,6 +1425,20 @@ export function BarberDashboard() {
           refetchAppointments()
           setIsEditAppointmentModalOpen(false)
           setSelectedAppointment(null)
+        }}
+        appointment={selectedAppointment}
+      />
+
+      {/* Modal para visualizar cita */}
+      <ViewAppointmentModal
+        isOpen={isViewAppointmentModalOpen}
+        onClose={() => {
+          setIsViewAppointmentModalOpen(false)
+          setSelectedAppointment(null)
+        }}
+        onEdit={() => {
+          setIsViewAppointmentModalOpen(false)
+          setIsEditAppointmentModalOpen(true)
         }}
         appointment={selectedAppointment}
       />
