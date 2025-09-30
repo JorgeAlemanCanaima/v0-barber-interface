@@ -210,56 +210,40 @@ const notifications = [
   },
 ]
 
-const styleGallery = [
-  {
-    id: 1,
-    name: "Fade Moderno",
-    category: "Fade",
-    image: "/placeholder-3491y.png?height=200&width=200&query=modern-fade",
-    likes: 45,
-    trending: true,
-  },
-  {
-    id: 2,
-    name: "Pompadour Clásico",
-    category: "Clásico",
-    image: "/placeholder-3491y.png?height=200&width=200&query=classic-pompadour",
-    likes: 32,
-    trending: false,
-  },
-  {
-    id: 3,
-    name: "Undercut Texturizado",
-    category: "Moderno",
-    image: "/placeholder-3491y.png?height=200&width=200&query=textured-undercut",
-    likes: 28,
-    trending: true,
-  },
-  {
-    id: 4,
-    name: "Buzz Cut Militar",
-    category: "Corto",
-    image: "/placeholder-3491y.png?height=200&width=200&query=military-buzz",
-    likes: 19,
-    trending: false,
-  },
-  {
-    id: 5,
-    name: "Quiff Elegante",
-    category: "Elegante",
-    image: "/placeholder-3491y.png?height=200&width=200&query=elegant-quiff",
-    likes: 37,
-    trending: true,
-  },
-  {
-    id: 6,
-    name: "Fade con Diseño",
-    category: "Artístico",
-    image: "/placeholder-3491y.png?height=200&width=200&query=design-fade",
-    likes: 52,
-    trending: true,
-  },
-]
+// Función para obtener la imagen correspondiente a cada servicio
+const getServiceImage = (serviceName: string) => {
+  const serviceImages: Record<string, string> = {
+    // Fade Clásico - Imagen específica de fade con degradado suave desde arriba hacia abajo
+    "Fade Clásico": "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=300&fit=crop&crop=face",
+    
+    // Corte + Barba - Imagen de corte con barba bien arreglada y estilizada
+    "Corte + Barba": "https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop&crop=face",
+    
+    // Buzz Cut - Imagen de corte muy corto/militar uniforme en toda la cabeza
+    "Buzz Cut": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=300&fit=crop&crop=face",
+    
+    // Pompadour - Imagen de pompadour clásico con volumen hacia atrás y lados cortos
+    "Pompadour": "https://images.unsplash.com/photo-1594736797933-d0401ba2fe65?w=400&h=300&fit=crop&crop=face",
+    
+    // Fade + Barba - Imagen de fade moderno con barba completa y bien cuidada
+    "Fade + Barba": "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?w=400&h=300&fit=crop&crop=face"
+  }
+  
+  return serviceImages[serviceName] || "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=300&fit=crop&crop=face"
+}
+
+// Función para obtener la categoría del servicio
+const getServiceCategory = (serviceName: string) => {
+  const categories: Record<string, string> = {
+    "Fade Clásico": "Fade",
+    "Corte + Barba": "Clásico",
+    "Buzz Cut": "Corto",
+    "Pompadour": "Elegante",
+    "Fade + Barba": "Moderno"
+  }
+  
+  return categories[serviceName] || "General"
+}
 
 export function BarberDashboard() {
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
@@ -851,7 +835,7 @@ export function BarberDashboard() {
 
             {/* Filtros de categoría */}
             <div className="flex flex-wrap gap-2">
-              {["Todos", "Fade", "Clásico", "Moderno", "Corto", "Elegante", "Artístico"].map((category) => (
+              {["Todos", ...new Set(services?.map(service => getServiceCategory(service.name)) || [])].map((category) => (
                 <Button
                   key={category}
                   variant={category === "Todos" ? "default" : "outline"}
@@ -869,55 +853,86 @@ export function BarberDashboard() {
 
             {/* Galería de estilos */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-              {styleGallery.map((style) => (
-                <Card key={style.id} className="glass-card border-0 hover-lift group overflow-hidden">
-                  <div className="relative">
-                    <img
-                      src={style.image || "/placeholder.svg"}
-                      alt={style.name}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    {style.trending && (
-                      <Badge className="absolute top-4 left-4 gradient-bg text-white border-0 shadow-lg">
-                        <Zap className="h-3 w-3 mr-1" />
-                        Trending
-                      </Badge>
-                    )}
-                    <div className="absolute top-4 right-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
-                      <Heart className="h-3 w-3 text-white" />
-                      <span className="text-xs text-white font-medium">{style.likes}</span>
-                    </div>
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="bg-white/20 backdrop-blur-sm text-white border-0"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Ver
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          className="bg-white/20 backdrop-blur-sm text-white border-0"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Editar
-                        </Button>
+              {services && services.length > 0 ? (
+                services.map((service) => {
+                  const appointmentCount = appointments?.filter((apt: any) => apt.service_id === service.id).length || 0
+                  const isTrending = appointmentCount > 2 // Trending si tiene más de 2 citas
+                  
+                  return (
+                    <Card key={service.id} className="glass-card border-0 hover-lift group overflow-hidden">
+                      <div className="relative">
+                        <img
+                          src={getServiceImage(service.name)}
+                          alt={service.name}
+                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=300&fit=crop&crop=face"
+                          }}
+                        />
+                        {isTrending && (
+                          <Badge className="absolute top-4 left-4 gradient-bg text-white border-0 shadow-lg">
+                            <Zap className="h-3 w-3 mr-1" />
+                            Popular
+                          </Badge>
+                        )}
+                        <div className="absolute top-4 right-4 flex items-center space-x-1 px-2 py-1 rounded-full bg-black/50 backdrop-blur-sm">
+                          <Calendar className="h-3 w-3 text-white" />
+                          <span className="text-xs text-white font-medium">{appointmentCount}</span>
+                        </div>
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                          <div className="flex space-x-2">
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="bg-white/20 backdrop-blur-sm text-white border-0"
+                            >
+                              <Eye className="h-4 w-4 mr-1" />
+                              Ver
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              className="bg-white/20 backdrop-blur-sm text-white border-0"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Editar
+                            </Button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <CardHeader className="pb-4">
-                    <div className="flex justify-between items-start">
-                      <CardTitle className="text-lg font-bold text-foreground">{style.name}</CardTitle>
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
-                        {style.category}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))}
+                      <CardHeader className="pb-4">
+                        <div className="flex justify-between items-start">
+                          <CardTitle className="text-lg font-bold text-foreground">{service.name}</CardTitle>
+                          <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20">
+                            {getServiceCategory(service.name)}
+                          </Badge>
+                        </div>
+                        <div className="mt-2 space-y-1">
+                          <p className="text-sm text-muted-foreground">{service.description}</p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                              <span className="font-semibold text-green-600">${service.price}</span>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Clock className="h-4 w-4 text-blue-600" />
+                              <span className="text-sm text-blue-600">{service.duration_min} min</span>
+                            </div>
+                          </div>
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  )
+                })
+              ) : (
+                <div className="col-span-full text-center py-12">
+                  <Scissors className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-foreground mb-2">No hay servicios</h3>
+                  <p className="text-muted-foreground">
+                    Aún no has agregado ningún servicio a tu catálogo
+                  </p>
+                </div>
+              )}
             </div>
           </TabsContent>
 
