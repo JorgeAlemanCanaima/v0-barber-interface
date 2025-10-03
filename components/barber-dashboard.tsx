@@ -15,6 +15,7 @@ import { ViewAppointmentModal } from "@/components/view-appointment-modal"
 import { AddClientModal } from "@/components/add-client-modal"
 import { ClientHistoryModal } from "@/components/client-history-modal"
 import { EditClientModal } from "@/components/edit-client-modal"
+import { InvoiceModal } from "@/components/invoice-modal"
 import {
   DollarSign,
   Users,
@@ -228,6 +229,8 @@ export function BarberDashboard() {
   const [isClientHistoryModalOpen, setIsClientHistoryModalOpen] = useState(false)
   const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
   const [selectedClient, setSelectedClient] = useState<any>(null)
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
+  const [selectedAppointmentForInvoice, setSelectedAppointmentForInvoice] = useState<any>(null)
 
   // Función para abrir modal de edición
   const handleEditService = (service: any) => {
@@ -371,6 +374,12 @@ Te contacto desde la barbería para coordinar tu cita.
   const handleViewAppointment = (appointment: any) => {
     setSelectedAppointment(appointment)
     setIsViewAppointmentModalOpen(true)
+  }
+
+  // Función para abrir modal de factura
+  const handleViewInvoice = (appointment: any) => {
+    setSelectedAppointmentForInvoice(appointment)
+    setIsInvoiceModalOpen(true)
   }
 
   // Calcular estadísticas en tiempo real
@@ -1403,7 +1412,8 @@ Te contacto desde la barbería para coordinar tu cita.
                                 variant="outline" 
                                 size="sm" 
                                 className="border-border hover:bg-muted/50 bg-transparent hover-lift"
-                                onClick={() => handleViewAppointment(appointment)}
+                                onClick={() => handleViewInvoice(appointment)}
+                                title="Ver factura"
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
@@ -1747,6 +1757,13 @@ Te contacto desde la barbería para coordinar tu cita.
           refetchClients()
           setIsEditClientModalOpen(false)
         }}
+      />
+
+      {/* Modal para ver factura */}
+      <InvoiceModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+        appointment={selectedAppointmentForInvoice}
       />
     </div>
   )
