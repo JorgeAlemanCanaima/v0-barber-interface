@@ -117,5 +117,58 @@ CREATE POLICY "Enable all operations for all users" ON "user" FOR ALL USING (tru
 CREATE POLICY "Enable all operations for all users" ON client FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON service FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON cita FOR ALL USING (true);
+-- Crear tabla de caja registradora
+CREATE TABLE IF NOT EXISTS cash_register (
+    id SERIAL PRIMARY KEY,
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    opening_cash DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    sales_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    expenses_total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    closing_cash DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    is_open BOOLEAN DEFAULT true,
+    opened_by INTEGER REFERENCES "user"(id),
+    closed_by INTEGER REFERENCES "user"(id),
+    opened_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    closed_at TIMESTAMP WITH TIME ZONE,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crear tabla de movimientos de caja
+CREATE TABLE IF NOT EXISTS cash_movement (
+    id SERIAL PRIMARY KEY,
+    cash_register_id INTEGER REFERENCES cash_register(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('SALE', 'EXPENSE', 'OPENING', 'CLOSING', 'ADJUSTMENT')),
+    amount DECIMAL(10,2) NOT NULL,
+    description TEXT,
+    reference_id INTEGER, -- ID de la cita, gasto, etc.
+    reference_type VARCHAR(50), -- 'appointment', 'expense', etc.
+    created_by INTEGER REFERENCES "user"(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crear tabla de gastos
+CREATE TABLE IF NOT EXISTS expense (
+    id SERIAL PRIMARY KEY,
+    cash_register_id INTEGER REFERENCES cash_register(id) ON DELETE CASCADE,
+    amount DECIMAL(10,2) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(100),
+    receipt_number VARCHAR(100),
+    created_by INTEGER REFERENCES "user"(id),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Habilitar RLS
+ALTER TABLE cash_register ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cash_movement ENABLE ROW LEVEL SECURITY;
+ALTER TABLE expense ENABLE ROW LEVEL SECURITY;
+
+-- Crear políticas RLS
+CREATE POLICY "Enable all operations for all users" ON cash_register FOR ALL USING (true);
+CREATE POLICY "Enable all operations for all users" ON cash_movement FOR ALL USING (true);
+CREATE POLICY "Enable all operations for all users" ON expense FOR ALL USING (true);
+
 CREATE POLICY "Enable all operations for all users" ON cita_service FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON notification FOR ALL USING (true);

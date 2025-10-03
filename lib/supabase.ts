@@ -57,11 +57,12 @@ export interface CitaService {
 export interface Cita {
   id: number
   client_id: number
-  barber_user_id?: number
+  barber_id?: number
   fecha_hora: string
   estado: 'PENDIENTE' | 'CONFIRMADA' | 'CANCELADA' | 'ATENDIDA'
-  status_id: number
+  notas?: string
   created_at: string
+  updated_at: string
   client?: Client
   barber?: User
   cita_services?: CitaService[]
@@ -69,24 +70,46 @@ export interface Cita {
 
 export interface CashRegister {
   id: number
-  opened_by: number
-  opened_at: string
-  opening_balance: number
-  status: 'OPEN' | 'CLOSED'
+  date: string
+  opening_cash: number
+  sales_total: number
+  expenses_total: number
+  closing_cash: number
+  is_open: boolean
+  opened_by?: number
   closed_by?: number
+  opened_at: string
   closed_at?: string
-  closing_balance?: number
+  notes?: string
+  created_at: string
+  updated_at: string
+  opened_by_user?: User
+  closed_by_user?: User
 }
 
-export interface MovCash {
+export interface CashMovement {
   id: number
   cash_register_id: number
-  type: 'IN' | 'OUT'
+  type: 'SALE' | 'EXPENSE' | 'OPENING' | 'CLOSING' | 'ADJUSTMENT'
   amount: number
-  concept: string
-  ref_cita_id?: number
-  created_by: number
+  description?: string
+  reference_id?: number
+  reference_type?: string
+  created_by?: number
   created_at: string
+  created_by_user?: User
+}
+
+export interface Expense {
+  id: number
+  cash_register_id: number
+  amount: number
+  description: string
+  category?: string
+  receipt_number?: string
+  created_by?: number
+  created_at: string
+  created_by_user?: User
 }
 
 export interface Notification {

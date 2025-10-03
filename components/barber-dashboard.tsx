@@ -16,6 +16,8 @@ import { AddClientModal } from "@/components/add-client-modal"
 import { ClientHistoryModal } from "@/components/client-history-modal"
 import { EditClientModal } from "@/components/edit-client-modal"
 import { InvoiceModal } from "@/components/invoice-modal"
+import { CashRegister } from "@/components/cash-register"
+import { NotificationsModal } from "@/components/notifications-modal"
 import {
   DollarSign,
   Users,
@@ -50,6 +52,7 @@ import {
   Heart,
   RefreshCw,
   CheckCircle,
+  Wallet,
 } from "lucide-react"
 import {
   PieChart,
@@ -231,6 +234,7 @@ export function BarberDashboard() {
   const [selectedClient, setSelectedClient] = useState<any>(null)
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false)
   const [selectedAppointmentForInvoice, setSelectedAppointmentForInvoice] = useState<any>(null)
+  const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false)
 
   // Función para abrir modal de edición
   const handleEditService = (service: any) => {
@@ -446,7 +450,16 @@ Te contacto desde la barbería para coordinar tu cita.
               </div>
             </div>
             <div className="flex items-center space-x-4">
-            
+              <Button
+                variant="outline"
+                size="sm"
+                className="relative border-border hover:bg-muted/50 bg-transparent hover-lift"
+                onClick={() => setIsNotificationsModalOpen(true)}
+              >
+                <Bell className="h-4 w-4 mr-2" />
+                Alertas
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+              </Button>
               <Avatar className="h-12 w-12 ring-4 ring-primary/20 hover-lift cursor-pointer">
                 <AvatarImage src="/barber-shop.png" />
                 <AvatarFallback className="gradient-bg text-white font-bold text-lg">JD</AvatarFallback>
@@ -571,19 +584,18 @@ Te contacto desde la barbería para coordinar tu cita.
               Servicios
             </TabsTrigger>
             <TabsTrigger
+              value="cash-register"
+              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
+            >
+              <Wallet className="h-4 w-4 mr-2" />
+              Caja
+            </TabsTrigger>
+            <TabsTrigger
               value="gallery"
               className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift"
             >
               <Camera className="h-4 w-4 mr-2" />
               Galería
-            </TabsTrigger>
-            <TabsTrigger
-              value="notifications"
-              className="data-[state=active]:gradient-bg data-[state=active]:text-white data-[state=active]:shadow-lg rounded-xl font-bold transition-all hover-lift relative"
-            >
-              <Bell className="h-4 w-4 mr-2" />
-              Alertas
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
             </TabsTrigger>
           </TabsList>
 
@@ -921,6 +933,10 @@ Te contacto desde la barbería para coordinar tu cita.
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="cash-register" className="space-y-8">
+            <CashRegister />
           </TabsContent>
 
           <TabsContent value="gallery" className="space-y-8">
@@ -1764,6 +1780,12 @@ Te contacto desde la barbería para coordinar tu cita.
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
         appointment={selectedAppointmentForInvoice}
+      />
+
+      {/* Modal de notificaciones */}
+      <NotificationsModal
+        isOpen={isNotificationsModalOpen}
+        onClose={() => setIsNotificationsModalOpen(false)}
       />
     </div>
   )
