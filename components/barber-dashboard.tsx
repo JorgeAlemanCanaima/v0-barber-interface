@@ -13,6 +13,8 @@ import { AddAppointmentModal } from "@/components/add-appointment-modal"
 import { EditAppointmentModal } from "@/components/edit-appointment-modal"
 import { ViewAppointmentModal } from "@/components/view-appointment-modal"
 import { AddClientModal } from "@/components/add-client-modal"
+import { ClientHistoryModal } from "@/components/client-history-modal"
+import { EditClientModal } from "@/components/edit-client-modal"
 import {
   DollarSign,
   Users,
@@ -222,6 +224,9 @@ export function BarberDashboard() {
   const [isViewAppointmentModalOpen, setIsViewAppointmentModalOpen] = useState(false)
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null)
   const [isAddClientModalOpen, setIsAddClientModalOpen] = useState(false)
+  const [isClientHistoryModalOpen, setIsClientHistoryModalOpen] = useState(false)
+  const [isEditClientModalOpen, setIsEditClientModalOpen] = useState(false)
+  const [selectedClient, setSelectedClient] = useState<any>(null)
 
   // Función para abrir modal de edición
   const handleEditService = (service: any) => {
@@ -1377,10 +1382,30 @@ export function BarberDashboard() {
                           </div>
                         </div>
                       </div>
-                      <Button variant="outline" className="border-border hover:bg-muted/50 bg-transparent hover-lift">
-                        <History className="h-4 w-4 mr-2" />
-                        Ver Historial Completo
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button 
+                          variant="outline" 
+                          className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                          onClick={() => {
+                            setSelectedClient(client)
+                            setIsClientHistoryModalOpen(true)
+                          }}
+                        >
+                          <History className="h-4 w-4 mr-2" />
+                          Ver Historial Completo
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                          onClick={() => {
+                            setSelectedClient(client)
+                            setIsEditClientModalOpen(true)
+                          }}
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Editar
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -1552,6 +1577,24 @@ export function BarberDashboard() {
         onClientAdded={() => {
           refetchClients()
           setIsAddClientModalOpen(false)
+        }}
+      />
+
+      {/* Modal para ver historial del cliente */}
+      <ClientHistoryModal
+        isOpen={isClientHistoryModalOpen}
+        onClose={() => setIsClientHistoryModalOpen(false)}
+        client={selectedClient}
+      />
+
+      {/* Modal para editar cliente */}
+      <EditClientModal
+        isOpen={isEditClientModalOpen}
+        onClose={() => setIsEditClientModalOpen(false)}
+        client={selectedClient}
+        onClientUpdated={() => {
+          refetchClients()
+          setIsEditClientModalOpen(false)
         }}
       />
     </div>
