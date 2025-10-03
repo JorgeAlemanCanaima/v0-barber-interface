@@ -60,6 +60,7 @@ import {
   Area,
 } from "recharts"
 import { useBarbers, useServices, useAppointments, useClients, useNotifications } from "@/lib/hooks/useSupabase"
+import { Cita } from "@/lib/supabase"
 
 // Datos de ejemplo (mantenidos para gráficos y datos que no están en la BD)
 const earningsData = [
@@ -207,7 +208,7 @@ const getServiceCategory = (serviceName: string) => {
 export function BarberDashboard() {
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
   const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useServices()
-  const { appointments, loading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments } = useAppointments()
+  const { appointments, loading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments, updateExpiredAppointments } = useAppointments()
   const { clients, loading: clientsLoading, error: clientsError, refetch: refetchClients } = useClients()
   const { notifications, loading: notificationsLoading, error: notificationsError, markAsRead, markAllAsRead, refetch: refetchNotifications } = useNotifications()
   
@@ -250,12 +251,15 @@ export function BarberDashboard() {
   const { todayEarnings, todayClients, popularServiceName, averageRating } = useMemo(() => {
     const attended = (appointments || []).filter((a: any) => (a.estado || a.status || "").toUpperCase() === "ATENDIDA")
     
-    const earnings = attended.reduce((sum: number, a: any) => sum + (a.service?.price || 0), 0)
+    const earnings = attended.reduce((sum: number, a: any) => sum + (a.cita_services?.reduce((total: number, cs: any) => total + (cs.service?.price || 0), 0) || 0), 0)
     const clients = attended.length
     
     // Servicio más popular
     const serviceCounts = (services || []).reduce((acc: any, service: any) => {
-      const count = (appointments || []).filter((apt: any) => apt.service_id === service.id).length
+      const count = (appointments || []).reduce((total: number, apt: any) => {
+        const serviceInAppointment = apt.cita_services?.some((cs: any) => cs.service?.id === service.id)
+        return total + (serviceInAppointment ? 1 : 0)
+      }, 0)
       acc[service.id] = { name: service.name, count }
       return acc
     }, {})
@@ -590,7 +594,13 @@ export function BarberDashboard() {
                         </Avatar>
                         <div>
                           <p className="font-semibold text-foreground">{appointment.client?.name || 'Cliente'}</p>
-                          <p className="text-sm text-muted-foreground">{appointment.service?.name || 'Servicio'}</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {appointment.cita_services?.map((cs: any, index: number) => (
+                              <span key={index} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                                {cs.service?.name || 'Servicio'}
+                              </span>
+                            )) || <span className="text-sm text-muted-foreground">Sin servicios</span>}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {new Date(appointment.fecha_hora).toLocaleTimeString('es-ES', { 
                               hour: '2-digit', 
@@ -601,8 +611,8 @@ export function BarberDashboard() {
                       </div>
                       <div className="flex items-center space-x-6">
                         <div className="text-right">
-                          <p className="font-bold text-lg text-foreground">${appointment.service?.price || 0}</p>
-                          <p className="text-sm text-muted-foreground">{appointment.service?.duration_min || 0} min</p>
+                          <p className="font-bold text-lg text-foreground">${appointment.cita_services?.reduce((total: number, cs: any) => total + (cs.service?.price || 0), 0) || 0}</p>
+                          <p className="text-sm text-muted-foreground">{appointment.cita_services?.reduce((total: number, cs: any) => total + (cs.service?.duration_min || 0), 0) || 0} min</p>
                         </div>
                         <div className="flex items-center space-x-1">
                           {[...Array(5)].map((_, i) => (
@@ -727,7 +737,10 @@ export function BarberDashboard() {
                           <div className="text-center">
                             <p className="text-sm text-muted-foreground">Reservas</p>
                             <p className="text-lg font-bold text-foreground">
-                              {appointments?.filter((apt: any) => apt.service_id === service.id).length || 0}
+                              {appointments?.reduce((total: number, apt: any) => {
+                                const serviceInAppointment = apt.cita_services?.some((cs: any) => cs.service?.id === service.id)
+                                return total + (serviceInAppointment ? 1 : 0)
+                              }, 0) || 0}
                             </p>
                           </div>
                           <div className="flex space-x-2">
@@ -815,7 +828,10 @@ export function BarberDashboard() {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {services && services.length > 0 ? (
                 services.map((service) => {
-                  const appointmentCount = appointments?.filter((apt: any) => apt.service_id === service.id).length || 0
+                  const appointmentCount = appointments?.reduce((total: number, apt: any) => {
+                    const serviceInAppointment = apt.cita_services?.some((cs: any) => cs.service?.id === service.id)
+                    return total + (serviceInAppointment ? 1 : 0)
+                  }, 0) || 0
                   const isTrending = appointmentCount > 2 // Trending si tiene más de 2 citas
                   
                   return (
@@ -1101,7 +1117,14 @@ export function BarberDashboard() {
                 <p className="text-muted-foreground text-base">Visualiza y administra todas las citas reservadas</p>
               </div>
               <div className="flex gap-2">
-             
+                <Button 
+                  variant="outline"
+                  onClick={updateExpiredAppointments}
+                  className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Cancelar Vencidas
+                </Button>
                 <Button 
                   onClick={() => setIsAddAppointmentModalOpen(true)}
                   className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover-lift"
@@ -1140,7 +1163,22 @@ export function BarberDashboard() {
 
             {/* Lista de citas */}
             <div className="space-y-4">
-              {appointments && appointments.length > 0 ? (
+              {appointmentsLoading && (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+                  <p className="text-muted-foreground">Cargando citas...</p>
+                </div>
+              )}
+              {appointmentsError && (
+                <div className="text-center py-8">
+                  <p className="text-red-500 mb-4">Error al cargar citas: {appointmentsError}</p>
+                  <Button onClick={refetchAppointments} variant="outline">
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Reintentar
+                  </Button>
+                </div>
+              )}
+              {!appointmentsLoading && !appointmentsError && appointments && appointments.length > 0 ? (
                 appointments.map((appointment) => {
                   const appointmentDate = new Date(appointment.fecha_hora)
                   const date = appointmentDate.toLocaleDateString('es-ES', { 
@@ -1205,8 +1243,14 @@ export function BarberDashboard() {
                               </div>
                               <div className="flex items-center gap-2">
                                 <Scissors className="h-4 w-4 text-primary" />
-                                <span className="text-muted-foreground">Servicio:</span>
-                                <span className="font-medium">{appointment.service?.name || 'Servicio'}</span>
+                                <span className="text-muted-foreground">Servicios:</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {appointment.cita_services?.map((cs: any, index: number) => (
+                                    <span key={index} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                                      {cs.service?.name || 'Servicio'}
+                                    </span>
+                                  )) || <span className="font-medium">Sin servicios</span>}
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1214,10 +1258,10 @@ export function BarberDashboard() {
                           <div className="flex flex-col items-end gap-2">
                             <div className="text-right">
                               <p className="text-2xl font-bold text-primary">
-                                ${appointment.service?.price || 0}
+                                ${appointment.cita_services?.reduce((total: number, cs: any) => total + (cs.service?.price || 0), 0) || 0}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {appointment.service?.duration_min || 30} min
+                                {appointment.cita_services?.reduce((total: number, cs: any) => total + (cs.service?.duration_min || 0), 0) || 0} min
                               </p>
                             </div>
                             <div className="flex space-x-2">
@@ -1249,9 +1293,18 @@ export function BarberDashboard() {
                   <CardContent>
                     <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                     <h3 className="text-xl font-semibold text-foreground mb-2">No hay citas</h3>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground mb-4">
                       No hay citas reservadas en este momento
                     </p>
+                    <div className="text-sm text-muted-foreground mb-4">
+                      <p>Estado: {appointmentsLoading ? 'Cargando...' : 'Cargado'}</p>
+                      <p>Error: {appointmentsError || 'Ninguno'}</p>
+                      <p>Citas encontradas: {appointments?.length || 0}</p>
+                    </div>
+                    <Button onClick={refetchAppointments} variant="outline">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Actualizar
+                    </Button>
                   </CardContent>
                 </Card>
               )}

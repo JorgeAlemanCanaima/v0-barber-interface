@@ -46,18 +46,25 @@ export interface Service {
   created_at: string
 }
 
+export interface CitaService {
+  id: number
+  cita_id: number
+  service_id: number
+  created_at: string
+  service?: Service
+}
+
 export interface Cita {
   id: number
   client_id: number
-  service_id: number
   barber_user_id?: number
   fecha_hora: string
   estado: 'PENDIENTE' | 'CONFIRMADA' | 'CANCELADA' | 'ATENDIDA'
   status_id: number
   created_at: string
   client?: Client
-  service?: Service
   barber?: User
+  cita_services?: CitaService[]
 }
 
 export interface CashRegister {

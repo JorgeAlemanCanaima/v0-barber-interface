@@ -50,11 +50,19 @@ CREATE TABLE IF NOT EXISTS service (
 CREATE TABLE IF NOT EXISTS cita (
     id SERIAL PRIMARY KEY,
     client_id INTEGER REFERENCES client(id),
-    service_id INTEGER REFERENCES service(id),
     barber_user_id INTEGER REFERENCES "user"(id),
     fecha_hora TIMESTAMP WITH TIME ZONE NOT NULL,
     estado VARCHAR(20) DEFAULT 'PENDIENTE' CHECK (estado IN ('PENDIENTE', 'CONFIRMADA', 'CANCELADA', 'ATENDIDA')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Crear tabla de relación entre citas y servicios (muchos a muchos)
+CREATE TABLE IF NOT EXISTS cita_service (
+    id SERIAL PRIMARY KEY,
+    cita_id INTEGER REFERENCES cita(id) ON DELETE CASCADE,
+    service_id INTEGER REFERENCES service(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(cita_id, service_id)
 );
 
 -- Crear tabla de notificaciones
@@ -101,6 +109,7 @@ ALTER TABLE "user" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE client ENABLE ROW LEVEL SECURITY;
 ALTER TABLE service ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cita ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cita_service ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notification ENABLE ROW LEVEL SECURITY;
 
 -- Crear políticas básicas (permite todo por ahora)
@@ -108,4 +117,5 @@ CREATE POLICY "Enable all operations for all users" ON "user" FOR ALL USING (tru
 CREATE POLICY "Enable all operations for all users" ON client FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON service FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON cita FOR ALL USING (true);
+CREATE POLICY "Enable all operations for all users" ON cita_service FOR ALL USING (true);
 CREATE POLICY "Enable all operations for all users" ON notification FOR ALL USING (true);
