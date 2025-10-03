@@ -241,6 +241,28 @@ export function useAppointments(date?: string) {
     }
   }
 
+  // Función para marcar una cita como atendida
+  const markAppointmentAsAttended = async (appointmentId: number) => {
+    try {
+      const { error } = await supabase
+        .from('cita')
+        .update({ estado: 'ATENDIDA' })
+        .eq('id', appointmentId)
+
+      if (error) {
+        console.error('Error al marcar cita como atendida:', error)
+        throw new Error('Error al actualizar el estado de la cita')
+      }
+
+      // Refrescar la lista de citas
+      await fetchAppointments()
+      return true
+    } catch (err) {
+      console.error('Error al marcar cita como atendida:', err)
+      throw err
+    }
+  }
+
   // Función para crear datos de ejemplo
   const createSampleData = async () => {
     try {
@@ -306,7 +328,7 @@ export function useAppointments(date?: string) {
     }
   }
 
-  return { appointments, loading, error, refetch: fetchAppointments, updateExpiredAppointments }
+  return { appointments, loading, error, refetch: fetchAppointments, updateExpiredAppointments, markAppointmentAsAttended }
 }
 
 // Hook para crear una cita

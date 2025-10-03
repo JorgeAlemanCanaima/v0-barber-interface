@@ -48,6 +48,7 @@ import {
   Zap,
   Heart,
   RefreshCw,
+  CheckCircle,
 } from "lucide-react"
 import {
   PieChart,
@@ -210,7 +211,7 @@ const getServiceCategory = (serviceName: string) => {
 export function BarberDashboard() {
   const { barbers, loading: barbersLoading, error: barbersError } = useBarbers()
   const { services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useServices()
-  const { appointments, loading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments, updateExpiredAppointments } = useAppointments()
+  const { appointments, loading: appointmentsLoading, error: appointmentsError, refetch: refetchAppointments, updateExpiredAppointments, markAppointmentAsAttended } = useAppointments()
   const { clients, loading: clientsLoading, error: clientsError, refetch: refetchClients } = useClients()
   const { notifications, loading: notificationsLoading, error: notificationsError, markAsRead, markAllAsRead, refetch: refetchNotifications } = useNotifications()
   
@@ -340,6 +341,18 @@ Te contacto desde la barbería para coordinar tu cita.
     
     // Abrir aplicación de llamadas
     window.location.href = callUrl
+  }
+
+  // Función para marcar cita como atendida
+  const handleMarkAsAttended = async (appointment: any) => {
+    try {
+      await markAppointmentAsAttended(appointment.id)
+      // Mostrar mensaje de éxito (puedes usar un toast aquí si tienes uno)
+      console.log('Cita marcada como atendida exitosamente')
+    } catch (error) {
+      console.error('Error al marcar cita como atendida:', error)
+      // Mostrar mensaje de error (puedes usar un toast aquí si tienes uno)
+    }
   }
 
   // Función para abrir modal de eliminación
@@ -1407,6 +1420,17 @@ Te contacto desde la barbería para coordinar tu cita.
                                   title="Enviar confirmación por WhatsApp"
                                 >
                                   <MessageSquare className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {(appointment.estado === 'PENDIENTE' || appointment.estado === 'CONFIRMADA') && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="border-blue-300 hover:bg-blue-50 bg-transparent hover-lift text-blue-700"
+                                  onClick={() => handleMarkAsAttended(appointment)}
+                                  title="Marcar como atendida"
+                                >
+                                  <CheckCircle className="h-4 w-4" />
                                 </Button>
                               )}
                             </div>
