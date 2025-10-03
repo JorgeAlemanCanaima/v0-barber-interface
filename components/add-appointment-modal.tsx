@@ -21,6 +21,9 @@ import { useCreateAppointment, useCreateClient } from "@/lib/hooks/useSupabase"
 import { useServices } from "@/lib/hooks/useSupabase"
 import { useClients } from "@/lib/hooks/useSupabase"
 import { useBarbers } from "@/lib/hooks/useSupabase"
+import { validateNicaraguaPhone, validateEmail, verifyEmailExists } from "@/lib/validations"
+import { generateAppointmentEmailMessage, generateAdminNotificationEmail, sendEmailSimulated } from "@/lib/email"
+import { ADMIN_EMAIL, isAdminEmailConfigured } from "@/lib/config"
 
 interface AddAppointmentModalProps {
   isOpen: boolean
@@ -57,6 +60,9 @@ export function AddAppointmentModal({
   const [isNewClient, setIsNewClient] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [phoneValidation, setPhoneValidation] = useState<{ isValid: boolean; formatted: string; error?: string } | null>(null)
+  const [emailValidation, setEmailValidation] = useState<{ isValid: boolean; error?: string } | null>(null)
+  const [emailVerification, setEmailVerification] = useState<{ exists: boolean; error?: string; verifying: boolean } | null>(null)
 
   // Reset form when modal opens/closes
   useEffect(() => {
@@ -76,8 +82,45 @@ export function AddAppointmentModal({
       })
       setIsNewClient(false)
       setErrors({})
+      setPhoneValidation(null)
+      setEmailValidation(null)
+      setEmailVerification(null)
     }
   }, [isOpen])
+
+  // Validar teléfono en tiempo real
+  const handlePhoneChange = (phone: string) => {
+    setNewClient(prev => ({ ...prev, phone }))
+    
+    if (phone.trim()) {
+      const validation = validateNicaraguaPhone(phone)
+      setPhoneValidation(validation)
+    } else {
+      setPhoneValidation(null)
+    }
+  }
+
+  // Validar email en tiempo real
+  const handleEmailChange = async (email: string) => {
+    setNewClient(prev => ({ ...prev, email }))
+    
+    if (email.trim()) {
+      const validation = validateEmail(email)
+      setEmailValidation(validation)
+      
+      if (validation.isValid) {
+        // Verificar si el email existe
+        setEmailVerification({ exists: false, verifying: true })
+        const verification = await verifyEmailExists(email)
+        setEmailVerification(verification)
+      } else {
+        setEmailVerification(null)
+      }
+    } else {
+      setEmailValidation(null)
+      setEmailVerification(null)
+    }
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -88,6 +131,23 @@ export function AddAppointmentModal({
       }
       if (!newClient.phone.trim()) {
         newErrors.phone = "El teléfono del cliente es requerido"
+      } else {
+        // Validar número de Nicaragua
+        const phoneValidation = validateNicaraguaPhone(newClient.phone)
+        if (!phoneValidation.isValid) {
+          newErrors.phone = phoneValidation.error || "Número de teléfono inválido"
+        }
+      }
+      if (!newClient.email.trim()) {
+        newErrors.email = "El email del cliente es requerido"
+      } else {
+        // Validar email
+        const emailValidation = validateEmail(newClient.email)
+        if (!emailValidation.isValid) {
+          newErrors.email = emailValidation.error || "Email inválido"
+        } else if (emailVerification && !emailVerification.exists) {
+          newErrors.email = "El email no existe o no es válido"
+        }
       }
     } else {
       if (!formData.client_id) {
@@ -167,7 +227,54 @@ export function AddAppointmentModal({
         status_id: getStatusId(formData.estado),
       }
 
-      await createAppointment(appointmentData)
+      const createdAppointment = await createAppointment(appointmentData)
+      
+      // Obtener los datos completos de la cita creada
+      const appointmentWithDetails = {
+        ...createdAppointment,
+        client: {
+          name: isNewClient ? newClient.name : 'Cliente existente',
+          phone: isNewClient ? newClient.phone : 'No especificado',
+          email: isNewClient ? newClient.email : 'No especificado'
+        },
+        service: selectedService,
+        barber: selectedBarber
+      }
+      
+      // Enviar email de confirmación al cliente si es un cliente nuevo con email válido
+      if (isNewClient && emailValidation?.isValid && emailVerification?.exists && newClient.email) {
+        try {
+          const emailContent = generateAppointmentEmailMessage(appointmentWithDetails)
+          const emailResult = await sendEmailSimulated(newClient.email, emailContent.subject, emailContent.html, emailContent.text)
+          
+          if (emailResult.success) {
+            console.log('✅ Email de confirmación enviado al cliente exitosamente')
+          } else {
+            console.warn('⚠️ Error al enviar email al cliente:', emailResult.error)
+          }
+        } catch (emailError) {
+          console.warn('⚠️ Error al enviar email al cliente:', emailError)
+        }
+      }
+      
+      // Enviar notificación al administrador
+      if (isAdminEmailConfigured()) {
+        try {
+          const adminEmailContent = generateAdminNotificationEmail(appointmentWithDetails)
+          const adminEmailResult = await sendEmailSimulated(ADMIN_EMAIL, adminEmailContent.subject, adminEmailContent.html, adminEmailContent.text)
+          
+          if (adminEmailResult.success) {
+            console.log('✅ Notificación enviada al administrador exitosamente')
+          } else {
+            console.warn('⚠️ Error al enviar notificación al administrador:', adminEmailResult.error)
+          }
+        } catch (adminEmailError) {
+          console.warn('⚠️ Error al enviar notificación al administrador:', adminEmailError)
+        }
+      } else {
+        console.warn('⚠️ Email del administrador no configurado. Configura NEXT_PUBLIC_ADMIN_EMAIL en .env.local')
+      }
+      
       onAppointmentAdded()
       onClose()
     } catch (error) {
@@ -249,26 +356,85 @@ export function AddAppointmentModal({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Teléfono *
+                    Teléfono de Nicaragua *
                   </label>
-                  <Input
-                    value={newClient.phone}
-                    onChange={(e) => setNewClient(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="+1234567890"
-                    className={errors.phone ? "border-red-500" : ""}
-                  />
+                  <div className="relative">
+                    <Input
+                      value={newClient.phone}
+                      onChange={(e) => handlePhoneChange(e.target.value)}
+                      placeholder="+505 8888 1234 o 88881234"
+                      className={`${errors.phone ? "border-red-500" : ""} ${
+                        phoneValidation?.isValid ? "border-green-500" : 
+                        phoneValidation?.isValid === false ? "border-red-500" : ""
+                      }`}
+                    />
+                    {phoneValidation?.isValid && (
+                      <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
+                    )}
+                    {phoneValidation?.isValid === false && (
+                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                  {phoneValidation?.isValid && (
+                    <p className="text-green-600 text-sm mt-1">
+                      ✅ Número válido: {phoneValidation.formatted}
+                    </p>
+                  )}
                   {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
+                  {phoneValidation?.isValid === false && !errors.phone && (
+                    <p className="text-red-500 text-sm mt-1">{phoneValidation.error}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Formato: +505 8888 1234, 50588881234, o 88881234
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Email
+                    Email *
                   </label>
-                  <Input
-                    value={newClient.email}
-                    onChange={(e) => setNewClient(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="email@ejemplo.com"
-                    type="email"
-                  />
+                  <div className="relative">
+                    <Input
+                      value={newClient.email}
+                      onChange={(e) => handleEmailChange(e.target.value)}
+                      placeholder="usuario@ejemplo.com"
+                      type="email"
+                      className={`${errors.email ? "border-red-500" : ""} ${
+                        emailValidation?.isValid && emailVerification?.exists ? "border-green-500" : 
+                        emailValidation?.isValid === false || (emailVerification && !emailVerification.exists) ? "border-red-500" : ""
+                      }`}
+                    />
+                    {emailVerification?.verifying && (
+                      <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                      </div>
+                    )}
+                    {emailValidation?.isValid && emailVerification?.exists && !emailVerification.verifying && (
+                      <CheckCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-green-500" />
+                    )}
+                    {emailValidation?.isValid === false && !emailVerification?.verifying && (
+                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+                    )}
+                    {emailValidation?.isValid && emailVerification && !emailVerification.exists && !emailVerification.verifying && (
+                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+                    )}
+                  </div>
+                  {emailVerification?.verifying && (
+                    <p className="text-blue-600 text-sm mt-1">
+                      🔍 Verificando email...
+                    </p>
+                  )}
+                  {emailValidation?.isValid && emailVerification?.exists && !emailVerification.verifying && (
+                    <p className="text-green-600 text-sm mt-1">
+                      ✅ Email válido y verificado
+                    </p>
+                  )}
+                  {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
+                  {emailValidation?.isValid === false && !errors.email && (
+                    <p className="text-red-500 text-sm mt-1">{emailValidation.error}</p>
+                  )}
+                  {emailValidation?.isValid && emailVerification && !emailVerification.exists && !emailVerification.verifying && !errors.email && (
+                    <p className="text-red-500 text-sm mt-1">El email no existe o no es válido</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
@@ -427,7 +593,23 @@ export function AddAppointmentModal({
           {/* Resumen */}
           {selectedService && selectedBarber && formData.fecha_hora && (
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-              <h4 className="font-semibold text-foreground mb-3">Resumen de la Cita</h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-foreground">Resumen de la Cita</h4>
+                <div className="flex items-center space-x-2">
+                  {isNewClient && emailValidation?.isValid && emailVerification?.exists && (
+                    <div className="flex items-center space-x-1 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      <span className="text-xs font-medium">Cliente</span>
+                    </div>
+                  )}
+                  {isAdminEmailConfigured() && (
+                    <div className="flex items-center space-x-1 text-blue-600">
+                      <User className="h-4 w-4" />
+                      <span className="text-xs font-medium">Admin</span>
+                    </div>
+                  )}
+                </div>
+              </div>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Cliente:</span>
