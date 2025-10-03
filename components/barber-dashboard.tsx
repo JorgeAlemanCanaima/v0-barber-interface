@@ -234,6 +234,114 @@ export function BarberDashboard() {
     setIsEditServiceModalOpen(true)
   }
 
+  // Función para generar mensaje de confirmación de cita
+  const generateAppointmentMessage = (client: any, appointment?: any) => {
+    if (appointment) {
+      // Formatear fecha y hora
+      const appointmentDate = new Date(appointment.fecha_hora)
+      const formattedDate = appointmentDate.toLocaleDateString('es-NI', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      })
+      const formattedTime = appointmentDate.toLocaleTimeString('es-NI', {
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+
+      // Obtener información del servicio
+      const serviceName = appointment.service?.name || 'Servicio'
+      const servicePrice = appointment.service?.price || 0
+      const serviceDuration = appointment.service?.duration_min || 0
+
+      // Obtener información del barbero
+      const barberName = appointment.barber?.full_name || 'Barbero asignado'
+
+      // Obtener estado de la cita
+      const statusEmoji = {
+        'PENDIENTE': '⏳',
+        'CONFIRMADA': '✅',
+        'CANCELADA': '❌',
+        'ATENDIDA': '🎉'
+      }
+      const statusText = {
+        'PENDIENTE': 'Pendiente',
+        'CONFIRMADA': 'Confirmada',
+        'CANCELADA': 'Cancelada',
+        'ATENDIDA': 'Atendida'
+      }
+
+      return `🎉 *¡CITA CONFIRMADA!* 🎉
+
+👤 *Cliente:* ${client.name}
+📅 *Fecha:* ${formattedDate}
+🕐 *Hora:* ${formattedTime}
+💇 *Servicio:* ${serviceName}
+💰 *Precio:* C$${servicePrice}
+⏱️ *Duración:* ${serviceDuration} minutos
+👨‍💼 *Barbero:* ${barberName}
+📊 *Estado:* ${statusEmoji[appointment.estado as keyof typeof statusEmoji]} ${statusText[appointment.estado as keyof typeof statusText]}
+
+¡Te esperamos en la barbería! 💈✨`
+    } else {
+      // Mensaje genérico si no hay cita específica
+      return `Hola ${client.name}! 👋
+
+Te contacto desde la barbería para coordinar tu cita. 
+
+¿Te gustaría agendar una nueva cita? 💇‍♂️✨`
+    }
+  }
+
+  // Función para abrir WhatsApp con el número del cliente
+  const handleWhatsAppMessage = (phone: string | undefined, clientName: string | undefined, appointment?: any) => {
+    if (!phone || !clientName) return
+    // Limpiar el número de teléfono (remover espacios, guiones, etc.)
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '')
+    
+    // Formatear al formato internacional de Nicaragua si no lo tiene
+    let whatsappNumber = cleanPhone
+    if (cleanPhone.startsWith('+505')) {
+      whatsappNumber = cleanPhone.substring(1) // Remover el +
+    } else if (cleanPhone.startsWith('505')) {
+      whatsappNumber = cleanPhone
+    } else {
+      whatsappNumber = '505' + cleanPhone
+    }
+    
+    // Crear mensaje personalizado
+    const message = generateAppointmentMessage({ name: clientName }, appointment)
+    
+    // Crear URL de WhatsApp
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+    
+    // Abrir WhatsApp en una nueva pestaña
+    window.open(whatsappUrl, '_blank')
+  }
+
+  // Función para hacer llamada telefónica
+  const handlePhoneCall = (phone: string) => {
+    // Limpiar el número de teléfono
+    const cleanPhone = phone.replace(/[\s\-\(\)]/g, '')
+    
+    // Formatear al formato internacional
+    let phoneNumber = cleanPhone
+    if (cleanPhone.startsWith('+505')) {
+      phoneNumber = cleanPhone
+    } else if (cleanPhone.startsWith('505')) {
+      phoneNumber = '+' + cleanPhone
+    } else {
+      phoneNumber = '+505' + cleanPhone
+    }
+    
+    // Crear URL de llamada
+    const callUrl = `tel:${phoneNumber}`
+    
+    // Abrir aplicación de llamadas
+    window.location.href = callUrl
+  }
+
   // Función para abrir modal de eliminación
   const handleDeleteService = (service: any) => {
     setSelectedService(service)
@@ -1286,6 +1394,21 @@ export function BarberDashboard() {
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
+                              {appointment.client?.phone && appointment.client?.name && (
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="border-green-300 hover:bg-green-50 bg-transparent hover-lift text-green-700"
+                                  onClick={() => {
+                                    if (appointment.client?.phone && appointment.client?.name) {
+                                      handleWhatsAppMessage(appointment.client.phone, appointment.client.name, appointment)
+                                    }
+                                  }}
+                                  title="Enviar confirmación por WhatsApp"
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1449,6 +1572,8 @@ export function BarberDashboard() {
                               size="sm"
                               variant="outline"
                               className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
+                              onClick={() => client.phone && handleWhatsAppMessage(client.phone, client.name)}
+                              disabled={!client.phone}
                             >
                               <MessageSquare className="h-4 w-4 mr-1" />
                               Mensaje
@@ -1457,6 +1582,8 @@ export function BarberDashboard() {
                               size="sm"
                               variant="outline"
                               className="flex-1 border-border hover:bg-muted/50 bg-transparent hover-lift"
+                              onClick={() => client.phone && handlePhoneCall(client.phone)}
+                              disabled={!client.phone}
                             >
                               <Phone className="h-4 w-4 mr-1" />
                               Llamar

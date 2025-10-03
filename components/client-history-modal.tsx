@@ -331,13 +331,132 @@ export function ClientHistoryModal({ isOpen, onClose, client }: ClientHistoryMod
             <X className="h-4 w-4 mr-2" />
             Cerrar
           </Button>
+          <Button
+            variant="outline"
+            className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+            onClick={() => {
+              if (!client.phone) return
+              
+              // Limpiar el número de teléfono
+              const cleanPhone = client.phone.replace(/[\s\-\(\)]/g, '')
+              
+              // Formatear al formato internacional de Nicaragua
+              let whatsappNumber = cleanPhone
+              if (cleanPhone.startsWith('+505')) {
+                whatsappNumber = cleanPhone.substring(1)
+              } else if (cleanPhone.startsWith('505')) {
+                whatsappNumber = cleanPhone
+              } else {
+                whatsappNumber = '505' + cleanPhone
+              }
+              
+              // Buscar la próxima cita del cliente
+              const nextAppointment = appointments.find(apt => 
+                apt.client_id === client.id && 
+                new Date(apt.fecha_hora) > new Date() &&
+                apt.estado !== 'CANCELADA'
+              )
+              
+              // Crear mensaje personalizado
+              let message
+              if (nextAppointment) {
+                // Formatear fecha y hora
+                const appointmentDate = new Date(nextAppointment.fecha_hora)
+                const formattedDate = appointmentDate.toLocaleDateString('es-NI', {
+                  weekday: 'long',
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                })
+                const formattedTime = appointmentDate.toLocaleTimeString('es-NI', {
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })
+
+                // Obtener información del servicio
+                const serviceName = nextAppointment.service?.name || 'Servicio'
+                const servicePrice = nextAppointment.service?.price || 0
+                const serviceDuration = nextAppointment.service?.duration_min || 0
+
+                // Obtener información del barbero
+                const barberName = nextAppointment.barber?.full_name || 'Barbero asignado'
+
+                // Obtener estado de la cita
+                const statusEmoji = {
+                  'PENDIENTE': '⏳',
+                  'CONFIRMADA': '✅',
+                  'CANCELADA': '❌',
+                  'ATENDIDA': '🎉'
+                }
+                const statusText = {
+                  'PENDIENTE': 'Pendiente',
+                  'CONFIRMADA': 'Confirmada',
+                  'CANCELADA': 'Cancelada',
+                  'ATENDIDA': 'Atendida'
+                }
+
+                message = `🎉 *¡CITA CONFIRMADA!* 🎉
+
+👤 *Cliente:* ${client.name}
+📅 *Fecha:* ${formattedDate}
+🕐 *Hora:* ${formattedTime}
+💇 *Servicio:* ${serviceName}
+💰 *Precio:* C$${servicePrice}
+⏱️ *Duración:* ${serviceDuration} minutos
+👨‍💼 *Barbero:* ${barberName}
+📊 *Estado:* ${statusEmoji[nextAppointment.estado as keyof typeof statusEmoji]} ${statusText[nextAppointment.estado as keyof typeof statusText]}
+
+¡Te esperamos en la barbería! 💈✨`
+              } else {
+                // Mensaje genérico si no hay cita próxima
+                message = `Hola ${client.name}! 👋
+
+Te contacto desde la barbería para coordinar tu cita. 
+
+¿Te gustaría agendar una nueva cita? 💇‍♂️✨`
+              }
+              
+              // Crear URL de WhatsApp
+              const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`
+              
+              // Abrir WhatsApp en una nueva pestaña
+              window.open(whatsappUrl, '_blank')
+            }}
+            disabled={!client.phone}
+          >
+            <MessageSquare className="h-4 w-4 mr-2" />
+            WhatsApp
+          </Button>
           {client.user && (
             <Button
               variant="outline"
               className="border-border hover:bg-muted/50 bg-transparent hover-lift"
+              onClick={() => {
+                if (!client.phone) return
+                
+                // Limpiar el número de teléfono
+                const cleanPhone = client.phone.replace(/[\s\-\(\)]/g, '')
+                
+                // Formatear al formato internacional
+                let phoneNumber = cleanPhone
+                if (cleanPhone.startsWith('+505')) {
+                  phoneNumber = cleanPhone
+                } else if (cleanPhone.startsWith('505')) {
+                  phoneNumber = '+' + cleanPhone
+                } else {
+                  phoneNumber = '+505' + cleanPhone
+                }
+                
+                // Crear URL de llamada
+                const callUrl = `tel:${phoneNumber}`
+                
+                // Abrir aplicación de llamadas
+                window.location.href = callUrl
+              }}
+              disabled={!client.phone}
             >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Contactar Barbero
+              <Phone className="h-4 w-4 mr-2" />
+              Llamar
             </Button>
           )}
         </div>
